@@ -33,6 +33,7 @@ const Leads: React.FC = () => {
         temperature: leadData.temperature || 'Warm',
         exchange: leadData.exchange || { hasExchange: false },
         remarks: leadData.remarks,
+        nextFollowUpDate: leadData.nextFollowUpDate,
       });
       addToast('New lead added to pipeline successfully!', 'success');
     } catch (err) {

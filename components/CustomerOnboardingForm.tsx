@@ -26,7 +26,9 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         hasExchange: false,
         exchangeVehicle: '',
         expectedValue: '',
-        remarks: ''
+        remarks: '',
+        nextFollowUpDate: '',
+        exchangePhotoUrl: ''
     });
 
     // Get unique models from inventory
@@ -71,7 +73,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
             hasExchange: formData.hasExchange,
             vehicleModel: formData.hasExchange ? formData.exchangeVehicle : undefined,
             expectedValue: formData.hasExchange ? parseFloat(formData.expectedValue) : undefined,
-            offeredValue: undefined // Will be set later by sales team
+            offeredValue: undefined, // Will be set later by sales team
+            photoUrl: formData.hasExchange ? formData.exchangePhotoUrl : undefined
         };
 
         const leadData = {
@@ -91,9 +94,10 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
             updatedAt: new Date().toISOString(),
             ownerId: 'System', // Will be assigned by manager
             branchId: 'B1',
-            quotationIssued: false,
+            quotation_issued: false,
             exchange,
             remarks: formData.remarks || undefined,
+            nextFollowUpDate: formData.nextFollowUpDate || undefined,
             notes: []
         };
 
@@ -104,7 +108,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         setFormData({
             name: '', phone: '', email: '', address: '', source: 'Showroom Walk In',
             modelInterest: '', vehicleColor: '', budget: '', temperature: 'Warm',
-            hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: ''
+            hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: '',
+            nextFollowUpDate: '', exchangePhotoUrl: ''
         });
     };
 
@@ -324,7 +329,7 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                                 </label>
 
                                 {formData.hasExchange && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8 animate-fade-in">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-8 animate-fade-in">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-600 mb-2">Current Vehicle Model</label>
                                             <input
@@ -345,21 +350,41 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                                                 placeholder="5000000"
                                             />
                                         </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-600 mb-2 text-blue-600">Vehicle Photo URL</label>
+                                            <input
+                                                type="text"
+                                                value={formData.exchangePhotoUrl}
+                                                onChange={(e) => setFormData({ ...formData, exchangePhotoUrl: e.target.value })}
+                                                className="w-full px-4 py-3 border border-blue-200 bg-blue-50/30 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                                placeholder="https://..."
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Remarks */}
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-2">Remarks / Notes</label>
-                            <textarea
-                                value={formData.remarks}
-                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                                rows={3}
-                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                                placeholder="Any additional information about the customer or their requirements..."
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-2">Next Follow-up Date</label>
+                                <input
+                                    type="date"
+                                    value={formData.nextFollowUpDate}
+                                    onChange={(e) => setFormData({ ...formData, nextFollowUpDate: e.target.value })}
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-2">Initial Remarks</label>
+                                <textarea
+                                    value={formData.remarks}
+                                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                                    rows={1}
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                                    placeholder="Initial customer requirements..."
+                                />
+                            </div>
                         </div>
                     </div>
 

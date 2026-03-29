@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import QuotationBuilder from './QuotationBuilder';
-import { X, Phone, Mail, MapPin, Car, Calendar, FileText, RefreshCw, Clock, CheckCircle, User, DollarSign, Edit2, Save, MessageCircle, ChevronDown, Sparkles } from 'lucide-react';
+import { X, Phone, Mail, MapPin, Car, Calendar, FileText, RefreshCw, Clock, CheckCircle, User, DollarSign, Edit2, Save, MessageCircle, ChevronDown, Sparkles, Image as ImageIcon, Plus, ArrowRight } from 'lucide-react';
 import { Button, Badge } from '../UI';
-import { Lead } from '../types';
+import { Lead, Activity } from '../types';
+import { useActivities, useCreateActivity } from '../api';
+import { useAuth } from '../AuthContext';
 
 // WhatsApp Message Templates
 const WHATSAPP_TEMPLATES = [
@@ -42,10 +44,16 @@ interface LeadDetailPanelProps {
 }
 
 const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose, onUpdate, onConvertToDeal }) => {
+
+    const { user } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<Lead>>({});
     const [isQuoteOpen, setIsQuoteOpen] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
+
+    // Fetch history
+    const { data: activities } = useActivities(lead.id, 'LEAD');
+    const createActivity = useCreateActivity();
 
     if (!isOpen || !lead) return null;
 
@@ -56,12 +64,28 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
             vehicleColor: lead.vehicleColor,
             address: lead.address,
             budget: lead.budget,
-            status: lead.status
+            status: lead.status,
+            nextFollowUpDate: lead.nextFollowUpDate,
+            exchange: lead.exchange || { hasExchange: false }
         });
         setIsEditing(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        // Only trigger activity if remarks or follow-up date changed
+        const hasChange = editData.remarks !== lead.remarks || editData.nextFollowUpDate !== lead.nextFollowUpDate;
+        
+        if (hasChange) {
+            await createActivity.mutateAsync({
+                entityId: lead.id,
+                entityType: 'LEAD',
+                kind: 'NOTE',
+                title: 'Follow-up Update',
+                description: editData.remarks || 'Updated lead details.',
+                createdBy: user?.id
+            });
+        }
+
         onUpdate(lead.id, editData);
         setIsEditing(false);
     };
@@ -212,20 +236,118 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                     <div>
                         <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-3">Exchange Details</h3>
                         <div className="bg-gradient-to-r from-deepal-50 to-accent-teal/10 rounded-2xl p-4 border border-deepal-100">
-                            <div className="flex items-center gap-2 mb-3">
-                                <RefreshCw size={18} className="text-deepal-600" />
-                                <span className="font-display font-bold text-deepal-900">{lead.exchange.vehicleModel}</span>
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <RefreshCw size={18} className="text-deepal-600" />
+                                    <span className="font-display font-bold text-deepal-900">{isEditing ? (
+                                        <input 
+                                            type="text" 
+                                            value={editData.exchange?.vehicleModel || ''}
+                                            onChange={(e) => setEditData({ 
+                                                ...editData, 
+                                                exchange: { ...editData.exchange!, vehicleModel: e.target.value } 
+                                            })}
+                                            className="bg-transparent border-b border-deepal-200 outline-none w-full"
+                                            placeholder="Model"
+                                        />
+                                    ) : lead.exchange.vehicleModel}</span>
+                                </div>
+                                
+                                {isEditing ? (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative flex-1">
+                                                <ImageIcon size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-deepal-400" />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Photo URL"
+                                                    value={editData.exchange?.photoUrl || ''}
+                                                    onChange={(e) => setEditData({
+                                                        ...editData,
+                                                        exchange: { ...editData.exchange!, photoUrl: e.target.value }
+                                                    })}
+                                                    className="w-full pl-7 pr-2 py-1 bg-white/50 border border-deepal-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-deepal-400"
+                                                />
+                                            </div>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                id="exchange-photo-upload"
+                                                className="hidden" 
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setEditData({
+                                                                ...editData,
+                                                                exchange: { ...editData.exchange!, photoUrl: reader.result as string }
+                                                            });
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                            <button 
+                                                type="button"
+                                                onClick={() => document.getElementById('exchange-photo-upload')?.click()}
+                                                className="p-1 px-2.5 bg-deepal-100 text-deepal-700 rounded-lg text-[10px] font-bold hover:bg-deepal-200 transition-colors flex items-center gap-1"
+                                            >
+                                                <Plus size={10} />
+                                                Add Photo
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    lead.exchange.photoUrl && (
+                                        <div className="h-10 w-10 rounded-lg overflow-hidden border border-deepal-200">
+                                            <img src={lead.exchange.photoUrl} alt="Exchange" className="h-full w-full object-cover" />
+                                        </div>
+                                    )
+                                )}
                             </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+
+                            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                                 <div>
                                     <p className="text-xs text-deepal-600 mb-1">Expected Value</p>
-                                    <p className="font-bold text-deepal-900">₹{lead.exchange.expectedValue ? (lead.exchange.expectedValue / 100000).toFixed(1) : '0'}L</p>
+                                    {isEditing ? (
+                                         <input 
+                                            type="number" 
+                                            value={editData.exchange?.expectedValue || 0}
+                                            onChange={(e) => setEditData({ 
+                                                ...editData, 
+                                                exchange: { ...editData.exchange!, expectedValue: parseFloat(e.target.value) } 
+                                            })}
+                                            className="bg-transparent border-b border-deepal-200 outline-none w-full font-bold"
+                                        />
+                                    ) : (
+                                        <p className="font-bold text-deepal-900">₹{lead.exchange.expectedValue ? (lead.exchange.expectedValue / 100000).toFixed(1) : '0'}L</p>
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-xs text-deepal-600 mb-1">Offered Value</p>
-                                    <p className="font-bold text-deepal-900">₹{lead.exchange.offeredValue ? (lead.exchange.offeredValue / 100000).toFixed(1) : 'Pending'}L</p>
+                                    {isEditing ? (
+                                         <input 
+                                            type="number" 
+                                            value={editData.exchange?.offeredValue || 0}
+                                            onChange={(e) => setEditData({ 
+                                                ...editData, 
+                                                exchange: { ...editData.exchange!, offeredValue: parseFloat(e.target.value) } 
+                                            })}
+                                            className="bg-transparent border-b border-deepal-200 outline-none w-full font-bold"
+                                        />
+                                    ) : (
+                                        <p className="font-bold text-deepal-900">₹{lead.exchange.offeredValue ? (lead.exchange.offeredValue / 100000).toFixed(1) : 'Pending'}L</p>
+                                    )}
                                 </div>
                             </div>
+                            
+                            {!isEditing && lead.exchange.photoUrl && (
+                                <a href={lead.exchange.photoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] text-deepal-600 hover:text-deepal-800 transition-colors uppercase font-bold">
+                                    <ImageIcon size={10} />
+                                    View Full size vehicle photo
+                                </a>
+                            )}
                         </div>
                     </div>
                 )}
@@ -259,21 +381,57 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                     </div>
                 </div>
 
-                {/* Remarks */}
+                {/* Remarks & History */}
                 <div>
-                    <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-3">Remarks</h3>
+                   <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-widest">Remarks & History</h3>
+                        {isEditing && (
+                             <div className="flex items-center gap-2">
+                                <Clock size={12} className="text-amber-500" />
+                                <input 
+                                    type="date"
+                                    value={editData.nextFollowUpDate ? new Date(editData.nextFollowUpDate).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => setEditData({ ...editData, nextFollowUpDate: e.target.value })}
+                                    className="text-xs font-bold text-amber-700 bg-amber-50 rounded-lg px-2 py-1 border border-amber-200"
+                                />
+                             </div>
+                        )}
+                   </div>
+
                     {isEditing ? (
                         <textarea
                             value={editData.remarks || ''}
                             onChange={(e) => setEditData({ ...editData, remarks: e.target.value })}
                             className="w-full px-4 py-3 border border-surface-200 rounded-2xl resize-none focus:ring-2 focus:ring-accent-teal/30 focus:border-accent-teal outline-none transition-all"
-                            rows={4}
+                            placeholder="Add your follow-up remarks here..."
+                            rows={3}
                         />
                     ) : (
-                        <div className="bg-white rounded-2xl p-4 border border-surface-100 shadow-card">
-                            <p className="text-sm text-surface-700 italic leading-relaxed">
-                                "{lead.remarks || 'No remarks captured.'}"
-                            </p>
+                        <div className="space-y-4">
+                            {/* Current Remark */}
+                            <div className="bg-white rounded-2xl p-4 border border-surface-100 shadow-card">
+                                <p className="text-sm text-surface-700 italic leading-relaxed">
+                                    "{lead.remarks || 'No remarks captured.'}"
+                                </p>
+                            </div>
+
+                            {/* History Timeline */}
+                            {activities && activities.length > 0 && (
+                                <div className="pl-4 border-l-2 border-surface-200 space-y-4 ml-2">
+                                    {activities.map((activity: Activity) => (
+                                        <div key={activity.id} className="relative">
+                                            <div className="absolute -left-[2.35rem] top-1 h-3 w-3 rounded-full bg-surface-200 border-2 border-white" />
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-surface-900">{activity.title}</p>
+                                                    <p className="text-[11px] text-surface-500 mt-1 leading-relaxed">{activity.description}</p>
+                                                </div>
+                                                <span className="text-[10px] text-surface-400 whitespace-nowrap">{new Date(activity.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

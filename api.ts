@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './lib/supabase';
-import { Lead, Vehicle, ServiceJob, Campaign, DashboardExceptions, Customer, Invoice, Part, Appointment, User } from './types';
+import { Lead, Vehicle, ServiceJob, Campaign, DashboardExceptions, Customer, Invoice, Part, Appointment, User, Activity } from './types';
 import * as MockData from './mockData';
 
 // Re-export supabase for direct use
@@ -656,6 +656,48 @@ export const api = {
         status: u.status as any
       }));
     }
+  },
+  activities: {
+    listByEntity: async (entityId: string, entityType: string): Promise<Activity[]> => {
+      if (isMockDataEnabled()) {
+        return [];
+      }
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('entity_id', entityId)
+        .eq('entity_type', entityType)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map(d => ({
+        id: d.id,
+        entityId: d.entity_id,
+        entityType: d.entity_type as any,
+        kind: d.kind as any,
+        title: d.title,
+        description: d.description || '',
+        createdAt: d.created_at,
+        createdBy: d.created_by,
+      }));
+    },
+    create: async (activity: Partial<Activity>): Promise<Activity> => {
+      const { data, error } = await supabase
+        .from('activities')
+        .insert([{
+          entity_id: activity.entityId,
+          entity_type: activity.entityType,
+          kind: activity.kind,
+          title: activity.title,
+          description: activity.description,
+          created_by: activity.createdBy
+        } as any])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as any;
+    }
   }
 };
 
@@ -745,5 +787,21 @@ export const useUpdatePartStock = () => {
   return useMutation({
     mutationFn: ({ id, newStock }: { id: string, newStock: number }) => api.parts.updateStock(id, newStock),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['parts'] })
+  });
+};
+
+export const useActivities = (entityId: string, entityType: string) => useQuery({
+  queryKey: ['activities', entityId, entityType],
+  queryFn: () => api.activities.listByEntity(entityId, entityType),
+  enabled: !!entityId && !!entityType
+});
+
+export const useCreateActivity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (activity: Partial<Activity>) => api.activities.create(activity),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['activities', variables.entityId, variables.entityType] });
+    }
   });
 };

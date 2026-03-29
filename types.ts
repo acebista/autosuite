@@ -66,8 +66,11 @@ export interface Activity {
 export interface ExchangeDetails {
   hasExchange: boolean;
   vehicleModel?: string;
+  engineNumber?: string;
+  kilometers?: number;
   expectedValue?: number;
   offeredValue?: number;
+  photoUrl?: string;
 }
 
 export interface Lead {
