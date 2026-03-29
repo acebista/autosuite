@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import QuotationBuilder from './QuotationBuilder';
-import { X, Phone, Mail, MapPin, Car, Calendar, FileText, RefreshCw, Clock, CheckCircle, User, DollarSign, Edit2, Save, MessageCircle, ChevronDown, Sparkles, Image as ImageIcon, Plus, ArrowRight } from 'lucide-react';
+import { X, Phone, Mail, MapPin, Car, Calendar, FileText, RefreshCw, Clock, CheckCircle, User, DollarSign, Edit2, Save, MessageCircle, ChevronDown, Sparkles, Image as ImageIcon, Plus, ArrowRight, Camera } from 'lucide-react';
 import { Button, Badge } from '../UI';
 import { Lead, Activity } from '../types';
 import { useActivities, useCreateActivity } from '../api';
@@ -256,23 +256,11 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                                 {isEditing ? (
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="relative flex-1">
-                                                <ImageIcon size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-deepal-400" />
-                                                <input 
-                                                    type="text"
-                                                    placeholder="Photo URL"
-                                                    value={editData.exchange?.photoUrl || ''}
-                                                    onChange={(e) => setEditData({
-                                                        ...editData,
-                                                        exchange: { ...editData.exchange!, photoUrl: e.target.value }
-                                                    })}
-                                                    className="w-full pl-7 pr-2 py-1 bg-white/50 border border-deepal-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-deepal-400"
-                                                />
-                                            </div>
                                             <input 
                                                 type="file" 
                                                 accept="image/*" 
                                                 id="exchange-photo-upload"
+                                                capture="environment"
                                                 className="hidden" 
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0];
@@ -291,10 +279,21 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                                             <button 
                                                 type="button"
                                                 onClick={() => document.getElementById('exchange-photo-upload')?.click()}
-                                                className="p-1 px-2.5 bg-deepal-100 text-deepal-700 rounded-lg text-[10px] font-bold hover:bg-deepal-200 transition-colors flex items-center gap-1"
+                                                className="w-full h-16 border-2 border-dashed border-deepal-200 bg-white/50 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-white hover:border-deepal-300 transition-all text-deepal-600 group"
                                             >
-                                                <Plus size={10} />
-                                                Add Photo
+                                                {editData.exchange?.photoUrl ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="h-8 w-8 rounded-lg overflow-hidden border border-deepal-200 mb-1">
+                                                            <img src={editData.exchange.photoUrl} alt="Preview" className="h-full w-full object-cover" />
+                                                        </div>
+                                                        <span className="text-[10px] font-bold">Replace Photo</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <Camera size={18} className="group-hover:scale-110 transition-transform" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider">Add or Click Photo</span>
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     </div>

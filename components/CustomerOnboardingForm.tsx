@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, User, Phone, MapPin, Car, Palette, DollarSign, RefreshCw, FileText, ChevronDown } from 'lucide-react';
+import { X, User, Phone, MapPin, Car, Palette, DollarSign, RefreshCw, FileText, ChevronDown, Camera, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../UI';
 import { ExchangeDetails } from '../types';
 import { useInventory } from '../api';
@@ -376,14 +376,45 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-600 mb-2 text-blue-600">Vehicle Photo URL</label>
-                                            <input
-                                                type="text"
-                                                value={formData.exchangePhotoUrl}
-                                                onChange={(e) => setFormData({ ...formData, exchangePhotoUrl: e.target.value })}
-                                                className="w-full px-4 py-3 border border-blue-200 bg-blue-50/30 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                                placeholder="https://..."
-                                            />
+                                            <label className="block text-xs font-bold text-slate-600 mb-2 text-blue-600">Exchange Vehicle Photo</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    id="onboarding-camera-upload"
+                                                    capture="environment"
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setFormData({ ...formData, exchangePhotoUrl: reader.result as string });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => document.getElementById('onboarding-camera-upload')?.click()}
+                                                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 border-2 border-dashed border-blue-200 bg-blue-50/30 rounded-2xl hover:bg-blue-50 transition-all group"
+                                                >
+                                                    {formData.exchangePhotoUrl ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-blue-200 mb-1">
+                                                                <img src={formData.exchangePhotoUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <span className="text-[10px] text-blue-600 font-bold">Replace Photo</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <Camera size={20} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                                            <span className="text-[10px] text-blue-600 font-bold">Click or Upload Photo</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
