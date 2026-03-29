@@ -52,7 +52,7 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
     const [showTemplates, setShowTemplates] = useState(false);
 
     // Fetch history
-    const { data: activities } = useActivities(lead.id, 'LEAD');
+    const { data: activities } = useActivities(lead?.id || '', 'LEAD');
     const createActivity = useCreateActivity();
 
     if (!isOpen || !lead) return null;
