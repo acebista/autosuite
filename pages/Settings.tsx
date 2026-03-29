@@ -80,7 +80,6 @@ const Settings: React.FC = () => {
       { id: 'general', label: 'General', icon: SettingsIcon },
       { id: 'users', label: 'Users & Roles', icon: User },
       { id: 'integrations', label: 'Integrations', icon: Share2 },
-      { id: 'developer', label: 'Developer', icon: Shield },
    ];
 
    const handleMockDataToggle = () => {
@@ -116,18 +115,7 @@ const Settings: React.FC = () => {
                   </nav>
                </Card>
 
-               {/* Role Simulator */}
-               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                  <div className="flex items-center gap-2 text-amber-800 mb-2 font-black uppercase text-[10px] tracking-widest">
-                     <Shield size={14} />
-                     <span>RBAC Demo Mode</span>
-                  </div>
-                  <p className="text-[11px] text-amber-700 mb-3 font-medium">Switch roles to test feature permissions.</p>
-                  <div className="flex bg-white rounded-xl p-1 border border-amber-200">
-                     <button onClick={() => setCurrentUserRole('Admin')} className={`flex-1 text-[10px] py-1.5 rounded-lg font-black uppercase tracking-tight transition-all ${currentUserRole === 'Admin' ? 'bg-amber-100 text-amber-800' : 'text-slate-500'}`}>Admin</button>
-                     <button onClick={() => setCurrentUserRole('Sales')} className={`flex-1 text-[10px] py-1.5 rounded-lg font-black uppercase tracking-tight transition-all ${currentUserRole === 'Sales' ? 'bg-amber-100 text-amber-800' : 'text-slate-500'}`}>Sales</button>
-                  </div>
-               </div>
+
             </div>
 
             {/* Content Area */}
@@ -222,108 +210,7 @@ const Settings: React.FC = () => {
                   </div>
                )}
 
-               {activeTab === 'developer' && (
-                  <div className="space-y-6 animate-fade-in">
-                     <Card>
-                        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-                           <div className="p-2 bg-purple-50 rounded-xl">
-                              <Shield size={20} className="text-purple-600" />
-                           </div>
-                           <div>
-                              <h3 className="text-lg font-bold text-slate-900">Developer Settings</h3>
-                              <p className="text-xs text-slate-500 font-medium">Testing and debugging options</p>
-                           </div>
-                        </div>
 
-                        <div className="space-y-6">
-                           {/* Mock Data Toggle */}
-                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-                              <div className="flex items-start justify-between mb-4">
-                                 <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <h4 className="text-sm font-black text-slate-900">Mock Data Mode</h4>
-                                       <Badge variant={useMockData ? 'success' : 'neutral'}>
-                                          {useMockData ? 'ENABLED' : 'DISABLED'}
-                                       </Badge>
-                                    </div>
-                                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                                       When enabled, the application will use comprehensive mock data instead of live Supabase data.
-                                       Perfect for testing UI components, demos, and development without affecting your database.
-                                    </p>
-                                 </div>
-                              </div>
-
-                              <div className="flex items-center gap-3 pt-4 border-t border-blue-200">
-                                 <Button
-                                    variant={useMockData ? 'danger' : 'primary'}
-                                    onClick={handleMockDataToggle}
-                                    className="flex-1"
-                                 >
-                                    {useMockData ? 'Disable Mock Data' : 'Enable Mock Data'}
-                                 </Button>
-                              </div>
-                           </div>
-
-                           {/* Mock Data Info */}
-                           {useMockData && (
-                              <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
-                                 <h4 className="text-xs font-black text-green-900 uppercase tracking-widest mb-3">Mock Data Includes:</h4>
-                                 <div className="grid grid-cols-2 gap-3 text-xs">
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">3 Sample Leads</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">4 Vehicles</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">3 Service Jobs</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">4 Customers</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">3 Invoices</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">4 Parts</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">3 Campaigns</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                       <span className="font-bold text-green-800">3 Appointments</span>
-                                    </div>
-                                 </div>
-                              </div>
-                           )}
-
-                           {/* Warning */}
-                           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                              <div className="flex gap-3">
-                                 <div className="text-amber-600 mt-0.5">
-                                    <Bell size={16} />
-                                 </div>
-                                 <div>
-                                    <h4 className="text-xs font-black text-amber-900 mb-1">Important Note</h4>
-                                    <p className="text-xs text-amber-800 font-medium leading-relaxed">
-                                       Toggling mock data will reload the page. Any unsaved changes will be lost.
-                                       Mock data is read-only and changes won't persist after disabling.
-                                    </p>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                     </Card>
-                  </div>
-               )}
 
                {activeTab === 'users' && (
                   <div className="space-y-6 animate-fade-in">

@@ -15,7 +15,6 @@ const Login: React.FC = () => {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
 
-  const [mode, setMode] = useState<'demo' | 'email'>('demo');
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,47 +64,11 @@ const Login: React.FC = () => {
     navigate(from, { replace: true });
   };
 
-  const handleDemoLogin = (role: Role) => {
-    loginWithRole(role);
-    navigate(from, { replace: true });
-  };
-
   const handleBackToCredentials = () => {
     setStep('credentials');
     setSelectedProfileId('');
     setError(null);
   };
-
-  const demoRoles = [
-    {
-      role: 'Admin' as Role,
-      title: 'Administrator',
-      subtitle: 'Full system control',
-      icon: ShieldCheck,
-      gradient: 'from-surface-600 to-surface-800'
-    },
-    {
-      role: 'SalesManager' as Role,
-      title: 'Sales Manager',
-      subtitle: 'Pipeline & Inventory',
-      icon: User,
-      gradient: 'from-deepal-500 to-deepal-700'
-    },
-    {
-      role: 'ServiceAdvisor' as Role,
-      title: 'Service Advisor',
-      subtitle: 'Operations & Jobs',
-      icon: Wrench,
-      gradient: 'from-accent-teal to-teal-600'
-    },
-    {
-      role: 'SuperAdmin' as Role,
-      title: 'Super Admin',
-      subtitle: 'Platform & All Orgs',
-      icon: Sparkles,
-      gradient: 'from-purple-600 to-indigo-700'
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-hero flex flex-col justify-center items-center p-6 relative overflow-hidden">
@@ -147,62 +110,9 @@ const Login: React.FC = () => {
 
         {/* Login Card */}
         <div className="glass-dark rounded-3xl shadow-elevated border border-white/10 overflow-hidden">
-          {/* Mode Toggle — only show on step 1 */}
-          {step === 'credentials' && (
-            <div className="flex gap-1 m-4 mb-0 p-1 bg-white/5 rounded-xl border border-white/5">
-              <button
-                onClick={() => setMode('demo')}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${mode === 'demo'
-                  ? 'bg-gradient-to-r from-accent-teal to-deepal-500 text-white shadow-glow-teal'
-                  : 'text-surface-400 hover:text-white'
-                  }`}
-              >
-                Demo Mode
-              </button>
-              <button
-                onClick={() => setMode('email')}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${mode === 'email'
-                  ? 'bg-gradient-to-r from-accent-teal to-deepal-500 text-white shadow-glow-teal'
-                  : 'text-surface-400 hover:text-white'
-                  }`}
-              >
-                Sign In
-              </button>
-            </div>
-          )}
-
           <div className="p-6">
-            {/* ── DEMO MODE ── */}
-            {step === 'credentials' && mode === 'demo' && (
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-surface-500 tracking-wide text-center mb-4">
-                  Select a demo role to explore
-                </p>
-                {demoRoles.map((item) => (
-                  <button
-                    key={item.role}
-                    onClick={() => handleDemoLogin(item.role)}
-                    className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-accent-teal/30 transition-all group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`h-12 w-12 bg-gradient-to-br ${item.gradient} text-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
-                        <item.icon size={22} />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold text-white group-hover:text-accent-teal transition-colors">{item.title}</p>
-                        <p className="text-xs text-surface-500 mt-0.5">{item.subtitle}</p>
-                      </div>
-                    </div>
-                    <div className="p-2 bg-white/5 rounded-lg group-hover:bg-accent-teal/20 transition-colors">
-                      <ArrowRight size={18} className="text-surface-500 group-hover:text-accent-teal group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* ── STEP 1: EMAIL + PASSWORD ── */}
-            {step === 'credentials' && mode === 'email' && (
+            {step === 'credentials' && (
               <form onSubmit={handleCredentialSubmit} className="space-y-4">
                 {error && (
                   <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm animate-fade-in">
