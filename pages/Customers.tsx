@@ -101,6 +101,7 @@ const AddCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
    const [formData, setFormData] = useState<Partial<Customer>>({
       name: '', phone: '', email: '', location: '', carsOwned: []
    });
+   const [isSubmitting, setIsSubmitting] = useState(false);
 
    if (!isOpen) return null;
 
@@ -109,12 +110,15 @@ const AddCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
          addToast('Name and Phone are required', 'error');
          return;
       }
+      setIsSubmitting(true);
       try {
          await createCustomer.mutateAsync(formData);
          addToast('Customer profile created', 'success');
          onClose();
       } catch (err) {
          addToast('Failed to create customer', 'error');
+      } finally {
+         setIsSubmitting(false);
       }
    };
 
@@ -138,7 +142,7 @@ const AddCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
             </div>
             <div className="flex gap-3 mt-8">
                <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-               <Button className="flex-1" onClick={handleSave}>Create Profile</Button>
+               <Button className="flex-1" onClick={handleSave} isLoading={isSubmitting}>Create Profile</Button>
             </div>
          </Card>
       </div>
@@ -192,53 +196,79 @@ const Customers: React.FC = () => {
             </div>
          </div>
 
-         <Card noPadding>
-            <table className="w-full text-sm text-left">
-               <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200">
-                  <tr>
-                     <th className="px-6 py-4">Name / Location</th>
-                     <th className="px-6 py-4">Current Vehicle</th>
-                     <th className="px-6 py-4">Next Service</th>
-                     <th className="px-6 py-4 text-center">LTV</th>
-                     <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-               </thead>
-               <tbody className="divide-y divide-slate-100">
-                  {filteredCustomers.length === 0 ? (
+         <div className="hidden lg:block">
+            <Card noPadding>
+               <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200">
                      <tr>
-                        <td colSpan={5} className="px-6 py-16 text-center">
-                           <div className="flex flex-col items-center">
-                              <div className="p-4 bg-slate-100 rounded-2xl mb-4">
-                                 <Users size={32} className="text-slate-400" />
-                              </div>
-                              <p className="font-semibold text-slate-700">No customers found</p>
-                              <p className="text-sm text-slate-500 mt-1">
-                                 {searchTerm ? 'Try adjusting your search' : 'Add your first customer to get started'}
-                              </p>
-                           </div>
-                        </td>
+                        <th className="px-6 py-4">Name / Location</th>
+                        <th className="px-6 py-4">Current Vehicle</th>
+                        <th className="px-6 py-4">Next Service</th>
+                        <th className="px-6 py-4 text-center">LTV</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
                      </tr>
-                  ) : filteredCustomers.map(cust => (
-                     <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                           <div className="font-bold text-slate-900">{cust.name}</div>
-                           <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{cust.location}</div>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-slate-600">
-                           {cust.carsOwned[0]?.model || '--'}
-                        </td>
-                        <td className="px-6 py-4">
-                           <Badge size="sm" variant={cust.nextServiceDueAt ? 'blue' : 'neutral'}>{cust.nextServiceDueAt || 'Not Scheduled'}</Badge>
-                        </td>
-                        <td className="px-6 py-4 text-center font-black text-slate-900">₹{(cust.ltv / 100000).toFixed(1)}L</td>
-                        <td className="px-6 py-4 text-right">
-                           <Button size="sm" variant="ghost" onClick={() => setSelectedCustomer(cust)}>Profile</Button>
-                        </td>
-                     </tr>
-                  ))}
-               </tbody>
-            </table>
-         </Card>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                     {filteredCustomers.length === 0 ? (
+                        <tr>
+                           <td colSpan={5} className="px-6 py-32 text-center text-slate-400 font-medium italic">No customers found</td>
+                        </tr>
+                     ) : filteredCustomers.map(cust => (
+                        <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors">
+                           <td className="px-6 py-4">
+                              <div className="font-bold text-slate-900">{cust.name}</div>
+                              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{cust.location}</div>
+                           </td>
+                           <td className="px-6 py-4 font-bold text-slate-600">
+                              {cust.carsOwned[0]?.model || '--'}
+                           </td>
+                           <td className="px-6 py-4">
+                              <Badge size="sm" variant={cust.nextServiceDueAt ? 'blue' : 'neutral'}>{cust.nextServiceDueAt || 'Not Scheduled'}</Badge>
+                           </td>
+                           <td className="px-6 py-4 text-center font-black text-slate-900">₹{(cust.ltv / 100000).toFixed(1)}L</td>
+                           <td className="px-6 py-4 text-right">
+                              <Button size="sm" variant="ghost" onClick={() => setSelectedCustomer(cust)}>Profile</Button>
+                           </td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </Card>
+         </div>
+
+         {/* Mobile Card View */}
+         <div className="lg:hidden space-y-4">
+            {filteredCustomers.length === 0 ? (
+               <div className="text-center py-20 text-slate-400 italic">No customers found</div>
+            ) : filteredCustomers.map(cust => (
+               <div 
+                  key={cust.id} 
+                  onClick={() => setSelectedCustomer(cust)}
+                  className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm active:scale-[0.98] transition-all"
+               >
+                  <div className="flex justify-between items-start mb-4">
+                     <div>
+                        <h4 className="font-black text-slate-900">{cust.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{cust.location}</p>
+                     </div>
+                     <Badge variant="blue" size="sm">₹{(cust.ltv / 100000).toFixed(1)}L LTV</Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                     <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1">Vehicle</p>
+                        <p className="text-sm font-bold text-slate-700 truncate">{cust.carsOwned[0]?.model || 'None'}</p>
+                     </div>
+                     <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1">Next Service</p>
+                        <p className={`text-sm font-bold ${cust.nextServiceDueAt ? 'text-blue-600' : 'text-slate-400'}`}>
+                           {cust.nextServiceDueAt || 'Not Set'}
+                        </p>
+                     </div>
+                  </div>
+               </div>
+            ))}
+         </div>
 
          <CustomerDrawer customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} />
       </div>

@@ -1,181 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Lead, Bank, Vehicle } from '../types';
-import { Button, Card } from '../UI';
+import { Button, Card, useToast } from '../UI';
 import { Printer, X, Settings, Plus, Trash2, RotateCcw, FileText, User, Building2 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import { PRODUCT_CATALOG, LOCAL_BANKS } from '../constants';
 
-// Deepal EV Lineup - Consolidated Vehicle Catalog (8 variants, each with color options)
-const ENHANCED_VEHICLES: Vehicle[] = [
-    // DEEPAL E07 - Electric SUV Coupe (2 variants)
-    {
-        id: 'V1', model: 'Deepal E07', variant: 'EV 530', year: 2025, color: 'Quartz White', status: 'In Stock',
-        price: 8990000, cost: 7800000, branchId: 'B1', daysInStock: 5, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/car/E07/1.png', vin: 'LSDC3A2G1PA000001',
-        availableColors: [
-            { color: 'Quartz White', image: 'https://changannepal.com/assets/frontend/images/car/E07/1.png' },
-            { color: 'Hematite Grey', image: 'https://changannepal.com/assets/frontend/images/car/E07/2.png' },
-            { color: 'Obsidian Black', image: 'https://changannepal.com/assets/frontend/images/car/E07/3.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '190 kW (255 HP)' },
-            { label: 'Battery Capacity', value: '71.8 kWh' },
-            { label: 'Range (CLTC)', value: '530 km' },
-            { label: '0-100 km/h', value: '3.96 seconds' },
-            { label: 'Ground Clearance', value: '195 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4880 x 1995 x 1580 mm' }
-        ]
-    },
-    {
-        id: 'V2', model: 'Deepal E07', variant: 'EV 620', year: 2025, color: 'Hematite Grey', status: 'In Stock',
-        price: 9990000, cost: 8700000, branchId: 'B1', daysInStock: 8, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/car/E07/2.png', vin: 'LSDC3A2G1PA000002',
-        availableColors: [
-            { color: 'Quartz White', image: 'https://changannepal.com/assets/frontend/images/car/E07/1.png' },
-            { color: 'Hematite Grey', image: 'https://changannepal.com/assets/frontend/images/car/E07/2.png' },
-            { color: 'Obsidian Black', image: 'https://changannepal.com/assets/frontend/images/car/E07/3.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '190 kW (255 HP)' },
-            { label: 'Battery Capacity', value: '80.5 kWh' },
-            { label: 'Range (CLTC)', value: '620 km' },
-            { label: '0-100 km/h', value: '3.96 seconds' },
-            { label: 'Ground Clearance', value: '195 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4880 x 1995 x 1580 mm' }
-        ]
-    },
-    // DEEPAL S07 - Smart Lifestyle SUV (2 variants)
-    {
-        id: 'V3', model: 'Deepal S07', variant: 'EV 500', year: 2025, color: 'Comet White', status: 'In Stock',
-        price: 7200000, cost: 6300000, branchId: 'B1', daysInStock: 12, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/car/S07/body/2.png', vin: 'LSDC3A2G1PA000003',
-        availableColors: [
-            { color: 'Lunar Gray', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/1.png' },
-            { color: 'Comet White', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/2.png' },
-            { color: 'Eclipse Black', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/3.png' },
-            { color: 'Nebula Green', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/4.png' },
-            { color: 'Sunset Orange', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/5.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
-            { label: 'Battery Capacity', value: '66.8 kWh' },
-            { label: 'Range (CLTC)', value: '520 km' },
-            { label: 'Ground Clearance', value: '190 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4750 x 1930 x 1625 mm' },
-            { label: 'Wheelbase', value: '2900 mm' }
-        ]
-    },
-    {
-        id: 'V4', model: 'Deepal S07', variant: 'EV 620', year: 2025, color: 'Eclipse Black', status: 'In Stock',
-        price: 7900000, cost: 6900000, branchId: 'B1', daysInStock: 7, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/car/S07/body/3.png', vin: 'LSDC3A2G1PA000004',
-        availableColors: [
-            { color: 'Lunar Gray', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/1.png' },
-            { color: 'Comet White', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/2.png' },
-            { color: 'Eclipse Black', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/3.png' },
-            { color: 'Nebula Green', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/4.png' },
-            { color: 'Sunset Orange', image: 'https://changannepal.com/assets/frontend/images/car/S07/body/5.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '175 kW (235 HP)' },
-            { label: 'Battery Capacity', value: '79.97 kWh' },
-            { label: 'Range (CLTC)', value: '620 km' },
-            { label: 'Ground Clearance', value: '190 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4750 x 1930 x 1625 mm' },
-            { label: 'Wheelbase', value: '2900 mm' }
-        ]
-    },
-    // DEEPAL L07 - Premium Electric Fastback (2 variants)
-    {
-        id: 'V5', model: 'Deepal L07', variant: 'EV 530', year: 2025, color: 'Stellar Blue', status: 'In Stock',
-        price: 7500000, cost: 6500000, branchId: 'B1', daysInStock: 15, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/car/6.png', vin: 'LSDC3A2G1PA000005',
-        availableColors: [
-            { color: 'Eclipse Black', image: 'https://changannepal.com/assets/frontend/images/car/2.png' },
-            { color: 'Comet White', image: 'https://changannepal.com/assets/frontend/images/car/3.png' },
-            { color: 'Lunar Gray', image: 'https://changannepal.com/assets/frontend/images/car/4.png' },
-            { color: 'Nebula Green', image: 'https://changannepal.com/assets/frontend/images/car/5.png' },
-            { color: 'Stellar Blue', image: 'https://changannepal.com/assets/frontend/images/car/6.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
-            { label: 'Battery Capacity', value: '66.8 kWh' },
-            { label: 'Range (CLTC)', value: '530 km' },
-            { label: 'Ground Clearance', value: '125 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4820 x 1890 x 1480 mm' },
-            { label: 'Wheelbase', value: '2785 mm' }
-        ]
-    },
-    {
-        id: 'V6', model: 'Deepal L07', variant: 'EREV (Extended Range)', year: 2025, color: 'Nebula Green', status: 'In Stock',
-        price: 8900000, cost: 7700000, branchId: 'B1', daysInStock: 10, agingBucket: '0-30', fuelType: 'Hybrid',
-        image: 'https://changannepal.com/assets/frontend/images/car/5.png', vin: 'LSDC3A2G1PA000006',
-        availableColors: [
-            { color: 'Eclipse Black', image: 'https://changannepal.com/assets/frontend/images/car/2.png' },
-            { color: 'Comet White', image: 'https://changannepal.com/assets/frontend/images/car/3.png' },
-            { color: 'Lunar Gray', image: 'https://changannepal.com/assets/frontend/images/car/4.png' },
-            { color: 'Nebula Green', image: 'https://changannepal.com/assets/frontend/images/car/5.png' },
-            { color: 'Stellar Blue', image: 'https://changannepal.com/assets/frontend/images/car/6.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '175 kW (235 HP)' },
-            { label: 'Battery Capacity', value: '31.6 kWh' },
-            { label: 'Pure Electric Range', value: '200 km' },
-            { label: 'Total Range (CLTC)', value: '1200+ km' },
-            { label: 'Engine', value: '1.5L Range Extender' },
-            { label: 'Dimensions (LxWxH)', value: '4820 x 1890 x 1480 mm' }
-        ]
-    },
-    // DEEPAL S05 - Compact Electric SUV (2 variants)
-    {
-        id: 'V7', model: 'Deepal S05', variant: 'EV 420', year: 2025, color: 'Moonlight White', status: 'In Stock',
-        price: 5500000, cost: 4800000, branchId: 'B1', daysInStock: 20, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png', vin: 'LSDC3A2G1PA000007',
-        availableColors: [
-            { color: 'Mercury Silver', image: 'https://changannepal.com/assets/frontend/images/s05/color/1.png' },
-            { color: 'Deep Space Black', image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png' },
-            { color: 'Andromeda Blue', image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png' },
-            { color: 'Ganymede Grey', image: 'https://changannepal.com/assets/frontend/images/s05/color/4.png' },
-            { color: 'Moonlight White', image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
-            { label: 'Battery Capacity', value: '52.3 kWh' },
-            { label: 'Range (CLTC)', value: '420 km' },
-            { label: 'Ground Clearance', value: '175 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4400 x 1875 x 1580 mm' },
-            { label: 'Remote Park', value: 'In & Out' }
-        ]
-    },
-    {
-        id: 'V8', model: 'Deepal S05', variant: 'EV 520', year: 2025, color: 'Andromeda Blue', status: 'In Stock',
-        price: 5990000, cost: 5200000, branchId: 'B1', daysInStock: 14, agingBucket: '0-30', fuelType: 'EV',
-        image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png', vin: 'LSDC3A2G1PA000008',
-        availableColors: [
-            { color: 'Mercury Silver', image: 'https://changannepal.com/assets/frontend/images/s05/color/1.png' },
-            { color: 'Deep Space Black', image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png' },
-            { color: 'Andromeda Blue', image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png' },
-            { color: 'Ganymede Grey', image: 'https://changannepal.com/assets/frontend/images/s05/color/4.png' },
-            { color: 'Moonlight White', image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png' }
-        ],
-        specifications: [
-            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
-            { label: 'Battery Capacity', value: '66.8 kWh' },
-            { label: 'Range (CLTC)', value: '520 km' },
-            { label: 'Ground Clearance', value: '175 mm' },
-            { label: 'Dimensions (LxWxH)', value: '4400 x 1875 x 1580 mm' },
-            { label: 'Remote Park', value: 'In & Out' }
-        ]
-    }
-];
-
-
-const LOCAL_BANKS: Bank[] = [
-    { id: 'B1', name: 'Siddhartha Bank Limited', branch: 'Kalyanpur, Saptari', address: 'Kalyanpur, Saptari' },
-    { id: 'B2', name: 'Nabil Bank', branch: 'Biratnagar', address: 'Mahendra Chowk, Biratnagar' },
-    { id: 'B3', name: 'Global IME Bank', branch: 'Itahari', address: 'Main Road, Itahari' },
-    { id: 'B4', name: 'Everest Bank', branch: 'Kathmandu', address: 'Lazimpat, Kathmandu' },
-];
+const ENHANCED_VEHICLES = PRODUCT_CATALOG;
 
 const LOCAL_PROFILE = {
     dealerName: 'Lalitpur Auto Works Pvt. Ltd.',
@@ -193,6 +24,7 @@ interface QuotationBuilderProps {
 
 const QuotationBuilder: React.FC<QuotationBuilderProps> = ({ lead, isOpen, onClose }) => {
     const { user } = useAuth();
+    const { addToast } = useToast();
     const [selectedBankId, setSelectedBankId] = useState<string>('');
     const [recipientName, setRecipientName] = useState<string>(lead?.name || '');
     const [bankName, setBankName] = useState<string>('');
@@ -413,9 +245,11 @@ const QuotationBuilder: React.FC<QuotationBuilderProps> = ({ lead, isOpen, onClo
     const handlePrint = () => {
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) {
-            alert('Please allow popups to print the quotation');
+            addToast('Popup blocked! Please allow popups to print.', 'error');
             return;
         }
+
+        addToast('Quotation generated successfully!', 'success');
 
         // Generate header HTML for repetition
         const headerHTML = `

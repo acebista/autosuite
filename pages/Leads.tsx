@@ -4,7 +4,7 @@ import { PageHeader, Card, Badge, Button, Skeleton, EmptyState, useToast } from 
 import {
   Plus, Search, Filter, Phone,
   MessageCircle, AlertTriangle,
-  Calendar, RefreshCw, Car, MapPin, User
+  Calendar, RefreshCw, Car, MapPin, User, Clock
 } from 'lucide-react';
 import CustomerOnboardingForm from '../components/CustomerOnboardingForm';
 import LeadDetailPanel from '../components/LeadDetailPanel';
@@ -97,34 +97,34 @@ const Leads: React.FC = () => {
           }
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-6 flex-1 min-w-[300px]">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search pipeline (Lead name, model, phone)..."
+                placeholder="Search pipeline..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium transition-all"
               />
             </div>
-            <Button variant="outline" size="sm" icon={Filter}>Filter</Button>
+            <Button variant="outline" size="sm" icon={Filter} className="whitespace-nowrap">Filter</Button>
           </div>
 
-          <div className="flex items-center gap-8">
-            <div className="text-center border-l border-slate-100 pl-8">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Enquiries</p>
+          <div className="grid grid-cols-2 sm:flex items-center gap-4 sm:gap-8 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+            <div className="text-center sm:border-l border-slate-100 sm:pl-8">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
               <p className="text-xl font-black text-slate-900">{leads?.length || 0}</p>
             </div>
-            <div className="text-center border-l border-slate-100 pl-8">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Hot Leads</p>
+            <div className="text-center border-l border-slate-100 pl-4 sm:pl-8">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Hot</p>
               <div className="flex items-center gap-1.5 justify-center">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 <p className="text-xl font-black text-slate-900">{leads?.filter(l => l.temperature === 'Hot').length || 0}</p>
               </div>
             </div>
-            <div className="text-center border-l border-slate-100 pl-8">
+            <div className="hidden sm:block text-center border-l border-slate-100 pl-8">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Delivered</p>
               <p className="text-xl font-black text-green-600">{leads?.filter(l => l.status === 'Delivered').length || 0}</p>
             </div>
@@ -132,95 +132,168 @@ const Leads: React.FC = () => {
         </div>
 
         {filteredLeads && filteredLeads.length > 0 ? (
-          <Card noPadding>
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50/50 text-slate-400 font-black uppercase tracking-widest text-[10px] border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-5">Customer Profile</th>
-                  <th className="px-6 py-5">Vehicle Interest</th>
-                  <th className="px-6 py-5">Exchange</th>
-                  <th className="px-6 py-5">Status & Temp</th>
-                  <th className="px-6 py-5">Remarks</th>
-                  <th className="px-6 py-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredLeads.map(lead => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => handleRowClick(lead)}
-                    className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
-                  >
-                    <td className="px-6 py-5 align-top">
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm ${lead.temperature === 'Hot' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                          {lead.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-900 group-hover:text-blue-600 transition-colors">{lead.name}</p>
-                          <p className="text-[11px] font-bold text-slate-500 mt-0.5 flex items-center gap-1">
-                            <Phone size={10} /> {lead.phone}
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden xl:block">
+              <Card noPadding>
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="bg-slate-50/50 text-slate-400 font-black uppercase tracking-widest text-[10px] border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-5">Customer Profile</th>
+                      <th className="px-6 py-5">Vehicle Interest</th>
+                      <th className="px-6 py-5">Exchange</th>
+                      <th className="px-6 py-5">Status & Temp</th>
+                      <th className="px-6 py-5">Remarks</th>
+                      <th className="px-6 py-5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {filteredLeads.map(lead => (
+                      <tr
+                        key={lead.id}
+                        onClick={() => handleRowClick(lead)}
+                        className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
+                      >
+                        <td className="px-6 py-5 align-top">
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm ${lead.temperature === 'Hot' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                              {lead.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-black text-slate-900 group-hover:text-blue-600 transition-colors">{lead.name}</p>
+                              <p className="text-[11px] font-bold text-slate-500 mt-0.5 flex items-center gap-1">
+                                <Phone size={10} /> {lead.phone}
+                              </p>
+                              {lead.address && <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1"><MapPin size={10} /> {lead.address}</p>}
+                              <p className="text-[10px] font-medium text-slate-400 mt-0.5 flex items-center gap-1"><User size={10} /> Rep: {lead.ownerId}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 align-top">
+                          <div className="font-bold text-slate-800 flex items-center gap-2">
+                            {lead.modelInterest}
+                            {lead.quotationIssued && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Quote Sent</span>}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-200" /> {lead.vehicleColor || 'Color Pending'}</div>
+                          <div className="text-xs text-slate-500 mt-1">{lead.testDriveDate ? `TD: ${lead.testDriveDate}` : 'TD: Not Taken'}</div>
+                        </td>
+                        <td className="px-6 py-5 align-top">
+                          {lead.exchange?.hasExchange ? (
+                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1">
+                                <RefreshCw size={12} className="text-blue-600" />
+                                {lead.exchange.vehicleModel}
+                              </div>
+                              <div className="text-[10px] text-slate-500 grid grid-cols-2 gap-x-4">
+                                <span>Exp: {lead.exchange.expectedValue ? `${(lead.exchange.expectedValue / 100000).toFixed(1)}L` : '-'}</span>
+                                <span className="font-bold text-blue-600">Off: {lead.exchange.offeredValue ? `${(lead.exchange.offeredValue / 100000).toFixed(1)}L` : '-'}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">- No Exchange -</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 align-top">
+                          <div className="flex flex-col gap-2 items-start">
+                            <Badge variant={lead.temperature === 'Hot' ? 'danger' : 'warning'} size="sm">
+                              {lead.temperature}
+                            </Badge>
+                            <Badge variant={lead.status === 'Delivered' ? 'success' : lead.status === 'Dropout' || lead.status === 'Cancelled' ? 'neutral' : 'blue'} size="sm">
+                              {lead.status || 'Active'}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 align-top max-w-xs">
+                          <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-slate-200 pl-2 line-clamp-2">
+                            "{lead.remarks || 'No remarks captured.'}"
                           </p>
-                          {lead.address && <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1"><MapPin size={10} /> {lead.address}</p>}
-                          <p className="text-[10px] font-medium text-slate-400 mt-0.5 flex items-center gap-1"><User size={10} /> Rep: {lead.ownerId}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 align-top">
-                      <div className="font-bold text-slate-800 flex items-center gap-2">
-                        {lead.modelInterest}
-                        {lead.quotationIssued && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Quote Sent</span>}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-200" /> {lead.vehicleColor || 'Color Pending'}</div>
-                      <div className="text-xs text-slate-500 mt-1">{lead.testDriveDate ? `TD: ${lead.testDriveDate}` : 'TD: Not Taken'}</div>
-                    </td>
-                    <td className="px-6 py-5 align-top">
-                      {lead.exchange?.hasExchange ? (
-                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1">
-                            <RefreshCw size={12} className="text-blue-600" />
-                            {lead.exchange.vehicleModel}
+                          {lead.nextFollowUpDate && (
+                            <div className="mt-2 text-[10px] font-bold text-blue-600 flex items-center gap-1">
+                              <Calendar size={10} /> Next: {lead.nextFollowUpDate}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 align-top text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1 justify-end">
+                            <Button variant="ghost" size="sm" icon={Phone} />
+                            <Button variant="ghost" size="sm" icon={MessageCircle} className="text-emerald-600" />
                           </div>
-                          <div className="text-[10px] text-slate-500 grid grid-cols-2 gap-x-4">
-                            <span>Exp: {lead.exchange.expectedValue ? `${(lead.exchange.expectedValue / 100000).toFixed(1)}L` : '-'}</span>
-                            <span className="font-bold text-blue-600">Off: {lead.exchange.offeredValue ? `${(lead.exchange.offeredValue / 100000).toFixed(1)}L` : '-'}</span>
-                          </div>
-                        </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="xl:hidden space-y-4">
+              {filteredLeads.map(lead => (
+                <div 
+                  key={lead.id} 
+                  onClick={() => handleRowClick(lead)}
+                  className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm active:scale-[0.98] transition-all"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-2xl flex items-center justify-center text-xs font-bold border-2 border-white shadow-sm ${lead.temperature === 'Hot' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                        {lead.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-900 leading-tight">{lead.name}</h4>
+                        <p className="text-[11px] font-bold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone size={10} /> {lead.phone}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={lead.temperature === 'Hot' ? 'danger' : 'warning'} size="sm">
+                      {lead.temperature}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-50">
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1">Interest</p>
+                      <p className="text-sm font-bold text-slate-800">{lead.modelInterest}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{lead.vehicleColor || 'Any Color'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1">Next Step</p>
+                      {lead.nextFollowUpDate ? (
+                        <p className="text-sm font-bold text-blue-600 flex items-center gap-1">
+                          <Clock size={12} /> {lead.nextFollowUpDate}
+                        </p>
                       ) : (
-                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">- No Exchange -</span>
+                        <p className="text-sm font-bold text-slate-400 underline decoration-dotted">Schedule...</p>
                       )}
-                    </td>
-                    <td className="px-6 py-5 align-top">
-                      <div className="flex flex-col gap-2 items-start">
-                        <Badge variant={lead.temperature === 'Hot' ? 'danger' : 'warning'} size="sm">
-                          {lead.temperature}
-                        </Badge>
-                        <Badge variant={lead.status === 'Delivered' ? 'success' : lead.status === 'Dropout' || lead.status === 'Cancelled' ? 'neutral' : 'blue'} size="sm">
-                          {lead.status || 'Active'}
-                        </Badge>
+                    </div>
+                  </div>
+
+                  {lead.exchange?.hasExchange && (
+                    <div className="mt-4 p-3 bg-slate-50 rounded-2xl flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className="text-blue-600" />
+                        <span className="text-xs font-bold text-slate-700">{lead.exchange.vehicleModel}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-5 align-top max-w-xs">
-                      <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-slate-200 pl-2 line-clamp-2">
-                        "{lead.remarks || 'No remarks captured.'}"
-                      </p>
-                      {lead.nextFollowUpDate && (
-                        <div className="mt-2 text-[10px] font-bold text-blue-600 flex items-center gap-1">
-                          <Calendar size={10} /> Next: {lead.nextFollowUpDate}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-5 align-top text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="sm" icon={Phone} />
-                        <Button variant="ghost" size="sm" icon={MessageCircle} className="text-emerald-600" />
+                      <div className="text-[10px] font-bold text-blue-600">
+                        ₹{lead.exchange.offeredValue ? `${(lead.exchange.offeredValue / 100000).toFixed(1)}L` : 'Pending'}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <Badge variant={lead.status === 'Delivered' ? 'success' : 'blue'} size="sm">
+                      {lead.status || 'Active'}
+                    </Badge>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" icon={Phone} className="bg-slate-50" />
+                      <Button variant="ghost" size="sm" icon={MessageCircle} className="bg-emerald-50 text-emerald-600" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState
             title={searchQuery ? "No matching leads" : "No active leads"}

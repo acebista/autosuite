@@ -80,7 +80,12 @@ export const Badge: React.FC<{ children: React.ReactNode; variant?: 'success' | 
   );
 };
 
-export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'gradient'; size?: 'sm' | 'md' | 'lg'; icon?: LucideIcon }> = ({ children, variant = 'primary', size = 'md', icon: Icon, className = "", ...props }) => {
+export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'gradient'; 
+  size?: 'sm' | 'md' | 'lg'; 
+  icon?: LucideIcon;
+  isLoading?: boolean;
+}> = ({ children, variant = 'primary', size = 'md', icon: Icon, isLoading, className = "", ...props }) => {
   const base = "inline-flex items-center justify-center font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-ring";
   const variants = {
     primary: "bg-deepal-500 text-white hover:bg-deepal-600 shadow-md hover:shadow-lg",
@@ -96,8 +101,19 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
     lg: "px-8 py-4 text-base rounded-2xl gap-2.5"
   };
   return (
-    <button className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
-      {Icon && <Icon size={size === 'sm' ? 14 : size === 'lg' ? 20 : 16} />}
+    <button 
+      className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} 
+      disabled={isLoading || props.disabled}
+      {...props}
+    >
+      {isLoading ? (
+        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      ) : Icon && (
+        <Icon size={size === 'sm' ? 14 : size === 'lg' ? 20 : 16} />
+      )}
       {children}
     </button>
   );

@@ -48,6 +48,7 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
     const { user } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<Lead>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isQuoteOpen, setIsQuoteOpen] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
 
@@ -76,23 +77,42 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
         const hasChange = editData.remarks !== lead.remarks || editData.nextFollowUpDate !== lead.nextFollowUpDate;
         
         if (hasChange) {
+            const changes = [];
+            if (editData.remarks !== lead.remarks) changes.push(`Remark updated`);
+            if (editData.nextFollowUpDate !== lead.nextFollowUpDate) {
+                const oldDate = lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate).toLocaleDateString() : 'None';
+                const newDate = editData.nextFollowUpDate ? new Date(editData.nextFollowUpDate).toLocaleDateString() : 'Cleared';
+                changes.push(`Follow-up moved: ${oldDate} → ${newDate}`);
+            }
+
             await createActivity.mutateAsync({
                 entityId: lead.id,
                 entityType: 'LEAD',
                 kind: 'NOTE',
-                title: 'Follow-up Update',
-                description: editData.remarks || 'Updated lead details.',
+                title: 'Activity Logged',
+                description: editData.remarks || changes.join(' | '),
                 createdBy: user?.id
             });
         }
 
-        onUpdate(lead.id, editData);
-        setIsEditing(false);
+        setIsSubmitting(true);
+        try {
+            onUpdate(lead.id, editData);
+            setIsEditing(false);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleConvert = () => {
+    const handleConvert = async () => {
+        if (!lead) return;
         if (window.confirm(`Convert "${lead.name}" to a Deal? This will create a sale record and invoice.`)) {
-            onConvertToDeal(lead.id);
+            setIsSubmitting(true);
+            try {
+                await onConvertToDeal(lead.id);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
@@ -476,7 +496,7 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                             <Button variant="secondary" onClick={() => setIsEditing(false)} className="flex-1">
                                 Cancel
                             </Button>
-                            <Button onClick={handleSave} icon={Save} className="flex-1">
+                            <Button onClick={handleSave} icon={Save} className="flex-1" isLoading={isSubmitting}>
                                 Save Changes
                             </Button>
                         </>
@@ -485,10 +505,11 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                             <Button variant="secondary" onClick={handleEdit} icon={Edit2} className="flex-1">
                                 Edit Details
                             </Button>
-                            <Button
+                             <Button
                                 onClick={handleConvert}
                                 variant="gradient"
                                 className="flex-1"
+                                isLoading={isSubmitting}
                             >
                                 Convert to Deal
                             </Button>

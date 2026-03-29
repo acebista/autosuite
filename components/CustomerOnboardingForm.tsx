@@ -32,6 +32,7 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         nextFollowUpDate: '',
         exchangePhotoUrl: ''
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Get unique models from inventory
     const availableModels = useMemo(() => {
@@ -68,7 +69,7 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         }
     }, [formData.modelInterest, availableColors]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const exchange: ExchangeDetails = {
@@ -105,17 +106,23 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
             notes: []
         };
 
-        onSubmit(leadData);
-        onClose();
-
-        // Reset form
-        setFormData({
-            name: '', phone: '', email: '', address: '', source: 'Showroom Walk In',
-            modelInterest: '', vehicleColor: '', budget: '', temperature: 'Warm',
-            companyName: '', panNumber: '',
-            hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: '',
-            nextFollowUpDate: '', exchangePhotoUrl: ''
-        });
+        setIsSubmitting(true);
+        try {
+            await onSubmit(leadData);
+            onClose();
+            // Reset form
+            setFormData({
+                name: '', phone: '', email: '', address: '', source: 'Showroom Walk In',
+                modelInterest: '', vehicleColor: '', budget: '', temperature: 'Warm',
+                companyName: '', panNumber: '',
+                hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: '',
+                nextFollowUpDate: '', exchangePhotoUrl: ''
+            });
+        } catch (error) {
+            // Error handled by parent toast usually, but we stop loading
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -449,7 +456,11 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                         <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
                             Cancel
                         </Button>
-                        <Button type="submit" className="flex-1">
+                        <Button 
+                            type="submit" 
+                            className="flex-1"
+                            isLoading={isSubmitting}
+                        >
                             Add to Pipeline
                         </Button>
                     </div>

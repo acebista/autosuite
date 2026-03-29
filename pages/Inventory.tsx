@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useInventory, useCreateVehicle } from '../api';
+import { useInventory, useCreateVehicle, useUpdateVehicle } from '../api';
 import { PageHeader, Card, Badge, Button, Skeleton, useToast, Input, Select } from '../UI';
+import { PRODUCT_CATALOG } from '../constants';
 import { Tag, Info, DollarSign, AlertCircle, X, Plus, Palette, Check, Car } from 'lucide-react';
 import { Vehicle } from '../types';
 
@@ -148,11 +149,37 @@ const Inventory: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isOfferOpen, setIsOfferOpen] = useState(false);
   const [detailsPreviewColor, setDetailsPreviewColor] = useState<string>('');
+  const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
+  const updateVehicle = useUpdateVehicle();
+  const [editPrice, setEditPrice] = useState<string>('');
 
   // Form state for adding stock
   const [newVehicle, setNewVehicle] = useState<Partial<Vehicle>>({
-    model: '', variant: '', vin: '', year: 2024, color: '', fuelType: 'Petrol', cost: 0, price: 0
+    model: '', variant: '', vin: '', year: 2025, color: '', fuelType: 'EV', cost: 0, price: 0
   });
+
+  const catalogModels = Array.from(new Set(PRODUCT_CATALOG.map(v => v.model)));
+  const variantsForModel = PRODUCT_CATALOG.filter(v => v.model === newVehicle.model);
+
+  const handleModelChange = (model: string) => {
+    setNewVehicle({ ...newVehicle, model, variant: '', fuelType: 'EV', price: 0, cost: 0 });
+  };
+
+  const handleVariantChange = (variant: string) => {
+    const selected = PRODUCT_CATALOG.find(v => v.model === newVehicle.model && v.variant === variant);
+    if (selected) {
+      setNewVehicle({
+        ...newVehicle,
+        variant,
+        fuelType: selected.fuelType,
+        price: selected.price,
+        cost: selected.cost,
+        image: selected.image,
+        specifications: selected.specifications,
+        availableColors: selected.availableColors
+      });
+    }
+  };
 
   if (isLoading) return <div className="space-y-6"><Skeleton className="h-12 w-1/4" /><Skeleton className="h-96" /></div>;
 
@@ -178,6 +205,24 @@ const Inventory: React.FC = () => {
       setNewVehicle({ model: '', variant: '', vin: '', year: 2024, color: '', fuelType: 'Petrol', cost: 0, price: 0 });
     } catch (err) {
       addToast('Failed to add vehicle', 'error');
+    }
+  };
+
+  const handleUpdatePrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVehicle) return;
+    setIsUpdatingPrice(true);
+    try {
+      await updateVehicle.mutateAsync({
+        id: selectedVehicle.id,
+        patch: { price: parseFloat(editPrice) }
+      });
+      addToast('Vehicle price updated successfully!', 'success');
+      setIsDetailsOpen(false);
+    } catch (err) {
+      addToast('Failed to update price', 'error');
+    } finally {
+      setIsUpdatingPrice(false);
     }
   };
 
@@ -306,42 +351,74 @@ const Inventory: React.FC = () => {
 
             <form onSubmit={handleAddStock} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-2">Model *</label>
-                  <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., Hyundai Creta" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Select Model *</label>
+                  <Select
+                    value={newVehicle.model}
+                    onChange={(e) => handleModelChange(e.target.value)}
+                    options={catalogModels.map(m => ({ label: m, value: m }))}
+                  />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-2">Variant *</label>
-                  <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., SX(O)" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Select Variant *</label>
+                  <Select
+                    disabled={!newVehicle.model}
+                    value={newVehicle.variant}
+                    onChange={(e) => handleVariantChange(e.target.value)}
+                    options={variantsForModel.map(v => ({ label: v.variant, value: v.variant }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">VIN Number *</label>
-                  <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="VIN12345" />
+                  <Input 
+                    required 
+                    value={newVehicle.vin}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, vin: e.target.value })}
+                    placeholder="VIN12345" 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">Year *</label>
-                  <input type="number" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="2024" />
+                  <Input 
+                    type="number" 
+                    required 
+                    value={newVehicle.year}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, year: parseInt(e.target.value) })}
+                    placeholder="2025" 
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-2">Color *</label>
-                  <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="White" />
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Stock Color *</label>
+                  <Select
+                    disabled={!newVehicle.variant}
+                    value={newVehicle.color}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, color: e.target.value })}
+                    options={newVehicle.availableColors?.map(c => ({ label: c.color, value: c.color })) || []}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-2">Fuel Type *</label>
-                  <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="Diesel">Diesel</option>
-                    <option value="Petrol">Petrol</option>
-                    <option value="Electric">Electric</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </select>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Fuel Type</label>
+                  <Input disabled value={newVehicle.fuelType} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-2">Cost Price (NPR) *</label>
-                  <input type="number" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="4800000" />
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Purchase Cost (NPR) *</label>
+                  <Input 
+                    type="number" 
+                    required 
+                    value={newVehicle.cost}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, cost: parseFloat(e.target.value) })}
+                    placeholder="4800000" 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">Selling Price (NPR) *</label>
-                  <input type="number" required className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="5200000" />
+                  <Input 
+                    type="number" 
+                    required 
+                    value={newVehicle.price}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, price: parseFloat(e.target.value) })}
+                    placeholder="5200000" 
+                  />
                 </div>
               </div>
 
@@ -435,9 +512,20 @@ const Inventory: React.FC = () => {
                   <p className="text-xs font-bold text-slate-500 mb-1">Cost Price</p>
                   <p className="font-bold text-slate-900">₹{(selectedVehicle.cost / 100000).toFixed(1)}L</p>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-xl">
+                <div className="p-4 bg-slate-50 rounded-xl group/price relative">
                   <p className="text-xs font-bold text-slate-500 mb-1">Selling Price</p>
-                  <p className="font-bold text-blue-700">₹{(selectedVehicle.price / 100000).toFixed(1)}L</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-blue-700">₹{(selectedVehicle.price / 100000).toFixed(2)}L</p>
+                    <button 
+                      onClick={() => {
+                        setEditPrice(selectedVehicle.price.toString());
+                        setIsUpdatingPrice(true);
+                      }}
+                      className="p-1.5 hover:bg-white text-slate-400 hover:text-blue-600 rounded-lg transition-all opacity-0 group-hover/price:opacity-100"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <p className="text-xs font-bold text-slate-500 mb-1">Days in Stock</p>
@@ -450,6 +538,36 @@ const Inventory: React.FC = () => {
               </div>
 
               <Button onClick={() => setIsDetailsOpen(false)} className="w-full">Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isUpdatingPrice && selectedVehicle && !isAddStockOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-black text-slate-900 mb-1">Update Price</h3>
+              <p className="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">{selectedVehicle.model}</p>
+              
+              <form onSubmit={handleUpdatePrice} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">New Selling Price (NPR) *</label>
+                  <Input 
+                    type="number" 
+                    required 
+                    autoFocus
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    placeholder="e.g. 5200000"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-2 font-medium">Current: ₹{(selectedVehicle.price / 100000).toFixed(2)}L</p>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button type="button" variant="secondary" onClick={() => setIsUpdatingPrice(false)} className="flex-1">Cancel</Button>
+                  <Button type="submit" className="flex-1" isLoading={updateVehicle.isPending}>Update</Button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
