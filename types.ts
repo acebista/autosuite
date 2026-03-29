@@ -101,6 +101,7 @@ export interface Lead {
   // Meta
   aiScore: number;
   ownerId: string | null; // Sales Representative
+  ownerName?: string; // Sales Representative Name
   branchId: string;
 
   // Details

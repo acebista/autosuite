@@ -56,7 +56,7 @@ export const api = {
 
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select('*, ownerNode:profiles!owner_id(name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -74,6 +74,7 @@ export const api = {
         temperature: d.temperature as any,
         aiScore: d.ai_score || 0,
         ownerId: d.owner_id,
+        ownerName: d.ownerNode?.name || undefined,
         branchId: d.branch_id || '',
         createdAt: d.created_at || '',
         updatedAt: d.updated_at || '',

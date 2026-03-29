@@ -165,7 +165,9 @@ const Leads: React.FC = () => {
                                 <Phone size={10} /> {lead.phone}
                               </p>
                               {lead.address && <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1"><MapPin size={10} /> {lead.address}</p>}
-                              <p className="text-[10px] font-medium text-slate-400 mt-0.5 flex items-center gap-1"><User size={10} /> Rep: {lead.ownerId}</p>
+                              <p className="text-[10px] font-bold text-blue-600/80 mt-1 flex items-center gap-1">
+                                <User size={10} /> Rep: {lead.ownerName || lead.ownerId || 'Unassigned'}
+                              </p>
                             </div>
                           </div>
                         </td>
@@ -243,6 +245,9 @@ const Leads: React.FC = () => {
                         <h4 className="font-black text-slate-900 leading-tight">{lead.name}</h4>
                         <p className="text-[11px] font-bold text-slate-500 mt-0.5 flex items-center gap-1">
                           <Phone size={10} /> {lead.phone}
+                        </p>
+                        <p className="text-[10px] font-bold text-blue-600/80 mt-1 flex items-center gap-1">
+                          <User size={10} /> {lead.ownerName || 'Unassigned'}
                         </p>
                       </div>
                     </div>

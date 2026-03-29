@@ -127,7 +127,14 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                         </div>
                         <div>
                             <h2 className="font-display text-2xl font-bold">{lead.name}</h2>
-                            <p className="text-deepal-200 text-sm mt-1">Lead ID: {lead.id}</p>
+                            <div className="flex items-center gap-3 mt-1 text-deepal-200 text-xs">
+                                <span>Lead ID: {lead.id}</span>
+                                <span className="h-3 w-[1px] bg-white/20"></span>
+                                <span className="flex items-center gap-1 font-bold text-white">
+                                    <User size={12} className="text-teal-400" />
+                                    Consultant: {lead.ownerName || 'Unassigned'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
