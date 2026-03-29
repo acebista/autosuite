@@ -79,6 +79,8 @@ export interface Lead {
   phone: string;
   email?: string;
   address?: string; // New
+  companyName?: string;
+  panNumber?: string;
   source: string;
   modelInterest: string;
   vehicleColor?: string; // New
@@ -164,6 +166,8 @@ export interface Customer {
   name: string;
   phone: string;
   email: string;
+  companyName?: string;
+  panNumber?: string;
   branchId: string;
   location: string;
   ltv: number;

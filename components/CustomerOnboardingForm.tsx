@@ -23,6 +23,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         vehicleColor: '',
         budget: '',
         temperature: 'Warm' as 'Hot' | 'Warm' | 'Cold',
+        companyName: '',
+        panNumber: '',
         hasExchange: false,
         exchangeVehicle: '',
         expectedValue: '',
@@ -83,6 +85,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
             phone: formData.phone,
             email: formData.email || undefined,
             address: formData.address || undefined,
+            companyName: formData.companyName || undefined,
+            panNumber: formData.panNumber || undefined,
             source: formData.source,
             modelInterest: formData.modelInterest,
             vehicleColor: formData.vehicleColor || undefined,
@@ -108,6 +112,7 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         setFormData({
             name: '', phone: '', email: '', address: '', source: 'Showroom Walk In',
             modelInterest: '', vehicleColor: '', budget: '', temperature: 'Warm',
+            companyName: '', panNumber: '',
             hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: '',
             nextFollowUpDate: '', exchangePhotoUrl: ''
         });
@@ -173,6 +178,26 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-2">Company Name (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.companyName}
+                                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., ABC Pvt Ltd"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-2">PAN Number (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.panNumber}
+                                        onChange={(e) => setFormData({ ...formData, panNumber: e.target.value })}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                        placeholder="Enter PAN"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className="block text-xs font-bold text-slate-600 mb-2">Address *</label>
                                     <input
                                         type="text"

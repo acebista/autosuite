@@ -473,6 +473,8 @@ export const api = {
         name: c.name,
         phone: c.phone,
         email: c.email || '',
+        companyName: c.company_name || undefined,
+        panNumber: c.pan_number || undefined,
         branchId: c.branch_id || '',
         location: c.location || '',
         ltv: c.ltv || 0,
@@ -489,6 +491,8 @@ export const api = {
           name: customer.name || '',
           phone: customer.phone || '',
           email: customer.email || '',
+          company_name: customer.companyName || '',
+          pan_number: customer.panNumber || '',
           location: customer.location || '',
           branch_id: customer.branchId || '',
           cars_owned: (customer.carsOwned || []) as any

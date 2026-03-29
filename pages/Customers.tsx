@@ -130,6 +130,10 @@ const AddCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                <Input label="Full Name" placeholder="e.g. John Doe" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                <Input label="Phone Number" placeholder="+91 98765 43210" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                <Input label="Email Address" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+               <div className="grid grid-cols-2 gap-4">
+                  <Input label="Company Name (Optional)" placeholder="e.g. ABC Pvt Ltd" value={formData.companyName} onChange={e => setFormData({ ...formData, companyName: e.target.value })} />
+                  <Input label="PAN Number (Optional)" placeholder="9 Digit Number" value={formData.panNumber} onChange={e => setFormData({ ...formData, panNumber: e.target.value })} />
+               </div>
                <Input label="Primary Location" placeholder="e.g. South Delhi" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
             </div>
             <div className="flex gap-3 mt-8">
