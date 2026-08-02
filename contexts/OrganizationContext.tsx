@@ -85,7 +85,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
             if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-                fetchOrganization();
+                // Defer to release auth state locks
+                setTimeout(() => {
+                    fetchOrganization();
+                }, 0);
             } else if (event === 'SIGNED_OUT') {
                 setOrganization(null);
             }

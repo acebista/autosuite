@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const { data: callerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .or(`id.eq."${caller.id}",user_id.eq."${caller.id}"`)
+      .or(`id.eq.${caller.id},user_id.eq.${caller.id}`)
       .limit(1)
       .single();
 
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         name: orgName,
         slug: slugValue,
         subscription_status: 'active',
-        subscription_tier: 'professional', // Fixed: was 'Pro'
+        subscription_tier: 'professional',
         max_users: 10,
         max_branches: 3
       })
@@ -67,9 +67,9 @@ Deno.serve(async (req) => {
       .single();
 
     if (orgError) throw orgError;
+    console.log('Organization created:', orgData.id);
 
     // 2. Get or create admin auth user
-    // We use listUsers to check existence
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
     const foundUser = usersData?.users?.find(u => u.email === adminEmail);
 
@@ -89,27 +89,48 @@ Deno.serve(async (req) => {
       if (adminError) throw adminError;
       adminUserId = adminData.user.id;
     }
+    console.log('Admin user id:', adminUserId);
 
-    // 3. Upsert profile
+    // 3. Deactivate any existing profiles for this auth user across all orgs
     await supabaseAdmin
       .from('profiles')
       .update({ is_active: false })
-      .or(`id.eq."${adminUserId}",user_id.eq."${adminUserId}"`);
+      .or(`id.eq.${adminUserId},user_id.eq.${adminUserId}`);
 
+    // 4. Upsert the profile for this org — explicit onConflict on 'id'
+    //    This ensures user_id, org_id, and is_active are all set correctly
+    //    even if the Supabase Auth trigger already inserted a partial row.
     const { error: profileUpsertError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         id: adminUserId,
-        user_id: adminUserId,
+        user_id: adminUserId,  // critical: links profile to auth.uid() for user_org_id()
         email: adminEmail,
         name: adminName,
         role: 'admin',
-        org_id: orgData.id,
+        org_id: orgData.id,   // critical: RLS scoping key
         status: 'Active',
-        is_active: true,
-      });
+        is_active: true,       // critical: makes user_org_id() return this org
+      }, { onConflict: 'id' });
 
-    if (profileUpsertError) throw profileUpsertError;
+    if (profileUpsertError) {
+      console.error('Profile upsert error:', profileUpsertError);
+      throw profileUpsertError;
+    }
+
+    // 5. Verify the profile was saved correctly
+    const { data: verifyProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, user_id, org_id, is_active')
+      .eq('id', adminUserId)
+      .eq('org_id', orgData.id)
+      .single();
+
+    console.log('Profile verification:', verifyProfile);
+
+    if (!verifyProfile?.org_id || !verifyProfile?.user_id) {
+      throw new Error('Profile not saved correctly — org_id or user_id missing. Check DB triggers.');
+    }
 
     return new Response(JSON.stringify({ success: true, org_id: orgData.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  ShieldCheck, ArrowRight, Key, Mail, AlertCircle, Sparkles, Car, Wrench,
-  Building2, ChevronDown, CheckCircle2, User, Lock
+  ShieldCheck, ArrowRight, Mail, AlertCircle, Sparkles, Car, Wrench,
+  Building2, ChevronDown, CheckCircle2, Lock
 } from 'lucide-react';
-import { Role, UserProfile } from '../types';
 
 type Step = 'credentials' | 'dealer';
 
 const Login: React.FC = () => {
-  const { verifyCredentials, selectDealerAndLogin, loginWithRole, isLoading, availableProfiles } = useAuth();
+  const { verifyCredentials, selectDealerAndLogin, isLoading, availableProfiles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';

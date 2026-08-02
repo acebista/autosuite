@@ -3,7 +3,8 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Car, Wrench, Megaphone,
   Settings, LogOut, Menu, ChevronDown, Search, MapPin,
-  Package, DollarSign, Calendar, QrCode, X, Sparkles, GraduationCap, Shield
+  Package, DollarSign, Calendar, QrCode, X, Sparkles, GraduationCap, Shield, ClipboardCheck,
+  Compass
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { useAuthStore } from '../lib/store';
@@ -12,15 +13,17 @@ import GlobalSearch from '../components/GlobalSearch';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Battle Plan', icon: LayoutDashboard, roles: ['Admin', 'SalesManager', 'SalesRep', 'ServiceAdvisor'] },
+  { path: '/vehicle-journey', label: 'Vehicle Journey', icon: Compass, roles: ['Admin', 'SalesManager', 'SalesRep', 'ServiceAdvisor', 'Finance', 'Marketing'] },
   { path: '/sales', label: 'Pipeline', icon: Users, roles: ['Admin', 'SalesManager', 'SalesRep'] },
   { path: '/inventory', label: 'Vehicle Inventory', icon: Car, roles: ['Admin', 'SalesManager', 'SalesRep'] },
+  { path: '/customer-registry', label: 'Customer Registry', icon: ClipboardCheck, roles: ['Admin', 'SalesManager', 'SalesRep'] },
   { path: '/catalog', label: 'Product Catalog', icon: Package, roles: ['Admin', 'SalesManager', 'SalesRep'] },
   { path: '/academy', label: 'Sales Academy', icon: GraduationCap, roles: ['Admin', 'SalesManager', 'SalesRep'] },
   { path: '/gate-pass', label: 'Gate Pass', icon: QrCode, roles: ['Admin', 'SalesManager', 'SalesRep', 'ServiceAdvisor'] },
   { path: '/parts', label: 'Parts Inventory', icon: Package, roles: ['Admin', 'ServiceAdvisor', 'Technician'] },
   { path: '/service', label: 'Workshop', icon: Wrench, roles: ['Admin', 'ServiceAdvisor', 'Technician'] },
   { path: '/calendar', label: 'Schedule', icon: Calendar, roles: ['Admin', 'SalesManager', 'ServiceAdvisor', 'SalesRep'] },
-  { path: '/customers', label: 'CRM', icon: Users, roles: ['Admin', 'SalesManager', 'Marketing'] },
+  { path: '/customers', label: 'CRM', icon: Users, roles: ['Admin', 'SalesManager', 'SalesRep', 'ServiceAdvisor', 'Marketing'] },
   { path: '/finance', label: 'Finance & Billing', icon: DollarSign, roles: ['Admin', 'SalesManager', 'ServiceAdvisor'] },
   { path: '/marketing', label: 'Marketing ROI', icon: Megaphone, roles: ['Admin', 'Marketing'] },
   { path: '/users', label: 'User Management', icon: Shield, roles: ['Admin'] },

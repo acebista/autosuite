@@ -40,12 +40,6 @@ const passTypeLabels: Record<GatePassType, string> = {
 // API functions
 // Note: gate_passes table type will be added after running migration 004
 const fetchGatePasses = async (): Promise<GatePass[]> => {
-    const isMockData = localStorage.getItem('useMockData') === 'true';
-    if (isMockData) {
-        const { MOCK_GATE_PASSES } = await import('../mockData');
-        return MOCK_GATE_PASSES;
-    }
-
     const { data, error } = await (supabase as any)
         .from('gate_passes')
         .select('*')
@@ -110,38 +104,8 @@ const GatePassPage: React.FC = () => {
             purpose?: string;
             validHours: number;
         }) => {
-            const isMockData = localStorage.getItem('useMockData') === 'true';
             const passCode = `GP-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
             const validUntil = new Date(Date.now() + data.validHours * 60 * 60 * 1000).toISOString();
-
-            if (isMockData) {
-                const { MOCK_GATE_PASSES } = await import('../mockData');
-                const newPass: GatePass = {
-                    id: `GP-${Date.now()}`,
-                    passCode,
-                    qrData: generateQRData({
-                        passCode,
-                        vehicleModel: data.vehicleModel,
-                        vehicleRegNumber: data.vehicleRegNumber,
-                        customerName: data.customerName,
-                        passType: data.passType,
-                        validUntil
-                    }),
-                    vehicleId: data.vehicleId,
-                    vehicleModel: data.vehicleModel,
-                    vehicleRegNumber: data.vehicleRegNumber || undefined,
-                    customerName: data.customerName || undefined,
-                    customerPhone: data.customerPhone || undefined,
-                    passType: data.passType,
-                    purpose: data.purpose || undefined,
-                    issuedBy: user?.id || 'demo-user',
-                    issuedAt: new Date().toISOString(),
-                    validUntil,
-                    status: 'active'
-                };
-                MOCK_GATE_PASSES.unshift(newPass);
-                return newPass;
-            }
 
             const newPass = {
                 pass_code: passCode,
@@ -187,24 +151,6 @@ const GatePassPage: React.FC = () => {
     // Scan/update gate pass mutation
     const scanPassMutation = useMutation({
         mutationFn: async ({ passCode, action }: { passCode: string; action: 'exit' | 'return' }) => {
-            const isMockData = localStorage.getItem('useMockData') === 'true';
-
-            if (isMockData) {
-                const { MOCK_GATE_PASSES } = await import('../mockData');
-                const pass = MOCK_GATE_PASSES.find((p: any) => p.passCode === passCode);
-                if (pass) {
-                    if (action === 'exit') {
-                        pass.exitedAt = new Date().toISOString();
-                        pass.exitScannedBy = user?.id || 'demo-user';
-                    } else {
-                        pass.returnedAt = new Date().toISOString();
-                        pass.returnScannedBy = user?.id || 'demo-user';
-                        pass.status = 'used';
-                    }
-                }
-                return;
-            }
-
             const updateData: any = {};
 
             if (action === 'exit') {

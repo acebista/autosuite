@@ -25,7 +25,6 @@ interface AuthContextType {
    * Step 2: Complete login by selecting a dealer from the list returned by verifyCredentials.
    */
   selectDealerAndLogin: (profile: UserProfile) => Promise<void>;
-  loginWithRole: (role: Role) => void;
   logout: () => Promise<void>;
   hasRole: (roles: Role[]) => boolean;
   /** Profiles returned after credential verification — null until step 1 is done */
@@ -73,7 +72,6 @@ async function fetchAllProfilesForUser(
   email: string
 ): Promise<UserProfile[]> {
   try {
-    // First try user_id column (new schema)
     const { data, error } = await supabase
       .from('profiles')
       .select('*, organizations(name, slug, logo_url, address, phone, email)')
@@ -145,6 +143,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
 
     const init = async () => {
+      // Clear any legacy mock/demo data from localStorage
+      localStorage.removeItem('useMockData');
+      localStorage.removeItem('autosuite_demo_session');
+      localStorage.removeItem('autosuite_persisted_mock_users');
+      localStorage.removeItem('autosuite_persisted_orgs');
       localStorage.removeItem('autosuite-auth-storage');
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('sb-') && key.endsWith('-auth-token') && key !== 'autosuite-sb-auth') {
@@ -173,25 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const p = await fetchActiveProfile(s.user.id, s.user);
           if (mounted && p) setUser(p);
         } else {
-          const demo = localStorage.getItem('autosuite_demo_session');
-          if (demo) {
-            try {
-              const d = JSON.parse(demo);
-              const p: UserProfile = {
-                ...d,
-                role: normalizeRole(d.role),
-                orgId: d.orgId || d.org_id || null,
-                branchId: d.branchId || null,
-                status: d.status || 'Active',
-              };
-              if (mounted) setUser(p);
-            } catch {
-              localStorage.removeItem('autosuite_demo_session');
-              if (mounted) clearAuth();
-            }
-          } else {
-            if (mounted) clearAuth();
-          }
+          if (mounted) clearAuth();
         }
       } catch (err) {
         console.error('Auth init error:', err);
@@ -204,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, s) => {
+      (event, s) => {
         if (!mounted) return;
         if (event === 'INITIAL_SESSION') return;
 
@@ -212,8 +197,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(s);
           // Only auto-set user if login is NOT in-progress (i.e., this is a page refresh)
           if (!loginInProgress.current) {
-            const p = await fetchActiveProfile(s.user.id, s.user);
-            if (mounted && p) setUser(p);
+            setTimeout(async () => {
+              const p = await fetchActiveProfile(s.user.id, s.user);
+              if (mounted && p) setUser(p);
+            }, 0);
           }
           setLoading(false);
         } else if (event === 'TOKEN_REFRESHED' && s) {
@@ -244,37 +231,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loginInProgress.current = true;
     setLoading(true);
 
-    // Mock mode
-    const isMock = localStorage.getItem('useMockData') === 'true';
-    if (isMock) {
-      const users = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-      const results = users.filter((u: any) => u.email === email && u.password === password);
-
-      if (results.length === 0) {
-        setLoading(false);
-        loginInProgress.current = false;
-        return { error: 'Invalid login credentials' };
-      }
-
-      const profiles: UserProfile[] = results.map((found: any) => ({
-        id: found.id,
-        name: found.name,
-        email: found.email,
-        role: normalizeRole(found.role),
-        orgId: found.org_id || found.orgId || 'demo-org',
-        orgName: found.orgName || 'Demo Organization',
-        orgSlug: found.orgSlug || 'demo-org',
-        branchId: found.branchId || 'b1',
-        status: 'Active' as const,
-      }));
-
-      setAvailableProfiles(profiles);
-      setLoading(false);
-      loginInProgress.current = false;
-      return { error: null, profiles };
-    }
-
-    // Supabase login — sign in to get user ID, but DON'T set user yet
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
@@ -317,7 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const selectDealerAndLogin = async (profile: UserProfile) => {
     setLoading(true);
     try {
-      if (profile.orgId && !profile.id.startsWith('demo-')) {
+      if (profile.orgId) {
         // Set active org in DB — this is what drives RLS
         await supabase.rpc('set_active_org', { target_org_id: profile.orgId });
       }
@@ -331,28 +287,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ── Demo login ──
-  const loginWithRole = (role: Role) => {
-    const p: UserProfile = {
-      id: 'demo-user-' + Date.now(),
-      name: role === 'Admin' ? 'Demo Admin' : `Demo ${role}`,
-      email: `${role.toLowerCase()}@demo.autosuite.ai`,
-      role,
-      orgId: 'demo-org',
-      orgName: 'AutoSuite Demo',
-      orgSlug: 'demo',
-      branchId: 'b1',
-      status: 'Active',
-    };
-    setUser(p);
-    localStorage.setItem('autosuite_demo_session', JSON.stringify(p));
-    localStorage.setItem('useMockData', 'true');
-  };
-
   // ── Logout ──
   const logout = async () => {
-    localStorage.removeItem('autosuite_demo_session');
-    localStorage.removeItem('useMockData');
     setAvailableProfiles(null);
     await supabase.auth.signOut();
     clearAuth();
@@ -370,7 +306,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         orgId: user?.orgId || null,
         verifyCredentials,
         selectDealerAndLogin,
-        loginWithRole,
         logout,
         hasRole,
         availableProfiles,

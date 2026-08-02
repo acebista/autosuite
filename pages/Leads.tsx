@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useLeads, useCreateLead, useUpdateLead } from '../api';
-import { PageHeader, Card, Badge, Button, Skeleton, EmptyState, useToast } from '../UI';
+import { useLeads, useCreateLead, useUpdateLead, useInventory, useUpdateVehicle, useCreateActivity } from '../api';
+import { PageHeader, Card, Badge, Button, Skeleton, EmptyState, useToast, Modal, Input, Select } from '../UI';
 import {
   Plus, Search, Filter, Phone,
   MessageCircle, AlertTriangle,
@@ -9,35 +9,62 @@ import {
 import CustomerOnboardingForm from '../components/CustomerOnboardingForm';
 import LeadDetailPanel from '../components/LeadDetailPanel';
 import { Lead } from '../types';
+import { useAuth } from '../AuthContext';
 
 const Leads: React.FC = () => {
   const { data: leads, isLoading } = useLeads();
+  const { data: inventory } = useInventory();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
+  const updateVehicle = useUpdateVehicle();
+  const createActivity = useCreateActivity();
+
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Convert to Deal State
+  const [selectedLeadForConversion, setSelectedLeadForConversion] = useState<Lead | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+  const [actualSellingPrice, setActualSellingPrice] = useState<string>('');
+  const [deliveryDate, setDeliveryDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [isSubmittingConversion, setIsSubmittingConversion] = useState(false);
+
   const handleNewLead = async (leadData: any) => {
     try {
-      await createLead.mutateAsync({
-        name: leadData.name,
-        phone: leadData.phone,
-        email: leadData.email,
-        address: leadData.address,
-        source: leadData.source || 'Walk-in',
-        modelInterest: leadData.modelInterest || leadData.vehicleInterest || '',
-        vehicleColor: leadData.vehicleColor,
-        budget: leadData.budget || 0,
-        temperature: leadData.temperature || 'Warm',
-        exchange: leadData.exchange || { hasExchange: false },
-        remarks: leadData.remarks,
-        nextFollowUpDate: leadData.nextFollowUpDate,
-      });
+      // Wrap in a timeout so ad blockers / network issues don't hang the spinner forever
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. Check your network or browser extensions.')), 15000)
+      );
+      await Promise.race([
+        createLead.mutateAsync({
+          name: leadData.name,
+          phone: leadData.phone,
+          email: leadData.email,
+          address: leadData.address,
+          source: leadData.source || 'Walk-in',
+          modelInterest: leadData.modelInterest || leadData.vehicleInterest || '',
+          vehicleColor: leadData.vehicleColor,
+          budget: leadData.budget || 0,
+          temperature: leadData.temperature || 'Warm',
+          exchange: leadData.exchange || { hasExchange: false },
+          remarks: leadData.remarks,
+          nextFollowUpDate: leadData.nextFollowUpDate,
+        }),
+        timeoutPromise
+      ]);
       addToast('New lead added to pipeline successfully!', 'success');
-    } catch (err) {
-      addToast('Failed to add lead. Please try again.', 'error');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('timed out') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        addToast('Network blocked — disable your ad blocker and try again.', 'error');
+      } else {
+        addToast('Failed to add lead. Please try again.', 'error');
+      }
+      // Re-throw so CustomerOnboardingForm's finally block runs and spinner resets
+      throw err;
     }
   };
 
@@ -51,19 +78,82 @@ const Leads: React.FC = () => {
     }
   };
 
-  const handleConvertToDeal = async (leadId: string) => {
+  const inStockVehicles = inventory?.filter(v => v.status === 'In Stock' && v.vin && !v.vin.startsWith('CAT-')) || [];
+
+  const handleConvertToDeal = (leadId: string) => {
     const lead = leads?.find(l => l.id === leadId);
     if (!lead) return;
+    setSelectedLeadForConversion(lead);
+    setSelectedVehicleId('');
+    setActualSellingPrice('');
+  };
 
+  const handleConfirmConversion = async () => {
+    if (!selectedLeadForConversion) return;
+    if (!selectedVehicleId) {
+      addToast('Please select a vehicle from inventory to deliver.', 'warning');
+      return;
+    }
+
+    const vehicle = inStockVehicles.find(v => v.id === selectedVehicleId);
+    if (!vehicle) return;
+
+    setIsSubmittingConversion(true);
     try {
-      await updateLead.mutateAsync({
-        id: leadId,
-        patch: { status: 'Delivered' }
-      });
-      addToast(`Deal created for ${lead.name}! Status set to Delivered.`, 'success');
+      const finalPrice = parseFloat(actualSellingPrice) || vehicle.price || 0;
+      
+      // Update vehicle and lead in parallel to be faster
+      await Promise.all([
+        updateVehicle.mutateAsync({
+          id: selectedVehicleId,
+          patch: { 
+            status: 'Sold',
+            price: finalPrice
+          }
+        }),
+        updateLead.mutateAsync({
+          id: selectedLeadForConversion.id,
+          patch: { 
+            status: 'Delivered',
+            deliveryDate: new Date(deliveryDate).toISOString()
+          }
+        })
+      ]);
+
+      // Attempt to log activity, but don't let activity failures block the successful UI flow
+      try {
+        await Promise.all([
+          createActivity.mutateAsync({
+            entityId: selectedLeadForConversion.id,
+            entityType: 'LEAD',
+            kind: 'SYSTEM',
+            title: 'Vehicle Delivered & Deal Closed',
+            description: `Delivered ${vehicle.model} ${vehicle.variant} (${vehicle.color}) [VIN: ${vehicle.vin}] to ${selectedLeadForConversion.name} for an actual selling price of ₹${finalPrice.toLocaleString()}.`,
+            createdBy: user?.id,
+            orgId: user?.orgId || undefined
+          } as any),
+          createActivity.mutateAsync({
+            entityId: vehicle.id,
+            entityType: 'VEHICLE',
+            kind: 'SYSTEM',
+            title: 'Vehicle Sold',
+            description: `Sold to ${selectedLeadForConversion.name} (Phone: ${selectedLeadForConversion.phone}) for ₹${finalPrice.toLocaleString()} on ${new Date(deliveryDate).toLocaleDateString()}.`,
+            createdBy: user?.id,
+            orgId: user?.orgId || undefined
+          } as any)
+        ]);
+      } catch (activityErr) {
+        console.warn('Failed to create system activity for delivery:', activityErr);
+      }
+
+      addToast(`Deal successfully closed! ${vehicle.model} marked as Sold.`, 'success');
+      setSelectedLeadForConversion(null);
       setSelectedLead(null);
     } catch (err) {
-      addToast('Failed to convert deal.', 'error');
+      console.error(err);
+      addToast('Failed to complete conversion.', 'error');
+    } finally {
+      setIsSubmittingConversion(false);
     }
   };
 
@@ -322,6 +412,122 @@ const Leads: React.FC = () => {
         onUpdate={handleUpdateLead}
         onConvertToDeal={handleConvertToDeal}
       />
+
+      {/* Convert to Deal / Delivery Modal */}
+      <Modal
+        isOpen={!!selectedLeadForConversion}
+        onClose={() => setSelectedLeadForConversion(null)}
+        title="Delivery & Deal Registration"
+      >
+        <div className="space-y-6">
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Customer Detail</h4>
+            <p className="text-base font-black text-slate-800">{selectedLeadForConversion?.name}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Interested in: <span className="text-blue-600 font-bold">{selectedLeadForConversion?.modelInterest}</span> 
+              {selectedLeadForConversion?.vehicleColor && ` • ${selectedLeadForConversion.vehicleColor}`}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-2">Select Stock Vehicle to Deliver *</label>
+              <Select
+                value={selectedVehicleId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedVehicleId(val);
+                  const matched = inStockVehicles.find(v => v.id === val);
+                  if (matched) {
+                    setActualSellingPrice(matched.price?.toString() || '');
+                  } else {
+                    setActualSellingPrice('');
+                  }
+                }}
+                options={[
+                  { label: 'Choose a vehicle in stock...', value: '' },
+                  ...inStockVehicles.map(v => ({
+                    label: `${v.model} ${v.variant} (${v.color}) — VIN: ${v.vin} (₹${v.price ? (v.price / 100000).toFixed(1) : '0'}L)`,
+                    value: v.id
+                  }))
+                ]}
+              />
+              {inStockVehicles.length === 0 && (
+                <p className="text-xs text-red-500 font-bold mt-2 flex items-center gap-1 animate-pulse">
+                  <AlertTriangle size={12} /> No vehicles currently "In Stock" in the inventory. Please register a vehicle in the stock inventory first.
+                </p>
+              )}
+            </div>
+
+            {selectedVehicleId && (() => {
+              const vehicle = inStockVehicles.find(v => v.id === selectedVehicleId);
+              if (!vehicle) return null;
+              return (
+                <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-3 animate-fade-in">
+                  <h4 className="text-xs font-black text-blue-800 uppercase tracking-wide">Vehicle Specifications</h4>
+                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
+                    <div>
+                      <span className="text-slate-400">VIN:</span> <span className="text-slate-800 font-bold">{vehicle.vin}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Color:</span> <span className="text-slate-800 font-bold">{vehicle.color}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Fuel Type:</span> <span className="text-slate-800 font-bold">{vehicle.fuelType}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Standard Price:</span> <span className="text-slate-800 font-bold">₹{vehicle.price?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-2">Actual Selling Price (NPR) *</label>
+                <Input
+                  type="number"
+                  required
+                  disabled={!selectedVehicleId}
+                  value={actualSellingPrice}
+                  onChange={(e) => setActualSellingPrice(e.target.value)}
+                  placeholder="Selling Price"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-2">Delivery Date *</label>
+                <Input
+                  type="date"
+                  required
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-slate-100">
+            <Button
+              variant="outline"
+              onClick={() => setSelectedLeadForConversion(null)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="gradient"
+              onClick={handleConfirmConversion}
+              className="flex-1"
+              isLoading={isSubmittingConversion}
+              disabled={!selectedVehicleId || !actualSellingPrice}
+            >
+              Deliver & Convert
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

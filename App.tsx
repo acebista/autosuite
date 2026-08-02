@@ -13,9 +13,14 @@ import Leads from './pages/Leads';
 import Inventory from './pages/Inventory';
 import Service from './pages/Service';
 import Customers from './pages/Customers';
+import CustomerRegistry from './pages/CustomerRegistry';
 import Login from './pages/Login';
 
 // Heavy pages — lazy loaded (code-split)
+const VehicleJourney = React.lazy(() => import('./pages/VehicleJourney'));
+const Procurement = VehicleJourney;
+const DealDesk = VehicleJourney;
+const FniLogistics = VehicleJourney;
 const SalesAcademy = React.lazy(() => import('./pages/SalesAcademy'));
 const Catalog = React.lazy(() => import('./pages/Catalog'));
 const Marketing = React.lazy(() => import('./pages/Marketing'));
@@ -60,8 +65,14 @@ const App: React.FC = () => {
 
                     <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
                       <Route index element={<Dashboard />} />
+                      <Route path="procurement" element={<Procurement />} />
+                      <Route path="deal-desk" element={<DealDesk />} />
+                      <Route path="fni" element={<FniLogistics />} />
+                      <Route path="vehicle-journey" element={<VehicleJourney />} />
                       <Route path="sales" element={<Leads />} />
                       <Route path="inventory" element={<Inventory />} />
+                      <Route path="customer-registry" element={<CustomerRegistry />} />
+                      <Route path="customer-registry/:customerId" element={<CustomerRegistry />} />
                       <Route path="service" element={<Service />} />
                       <Route path="customers" element={<Customers />} />
                       <Route path="parts" element={<Parts />} />

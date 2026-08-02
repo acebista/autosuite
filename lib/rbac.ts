@@ -54,43 +54,37 @@ const ROLE_HIERARCHY: Record<Role, number> = {
  */
 
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
-    const isMockDataEnabled = localStorage.getItem('useMockData') === 'true';
-    if (isMockDataEnabled) {
-        const mockSession = localStorage.getItem('autosuite_demo_session');
-        if (mockSession) {
-            const data = JSON.parse(mockSession);
-            return {
-                id: data.id,
-                email: data.email,
-                name: data.name,
-                role: normalizeRole(data.role),
-                orgId: data.orgId || data.org_id || 'demo-org',
-                branchId: data.branchId || null,
-                status: (data.status || 'Active') as 'Active' | 'Inactive'
-            };
-        }
-        return null;
-    }
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (!profile) return null;
+    // Fallback: first profile for this user
+    const effectiveProfile = profile || await (async () => {
+        const { data: first } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+            .limit(1)
+            .maybeSingle();
+        return first;
+    })();
+
+    if (!effectiveProfile) return null;
     return {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: normalizeRole(profile.role),
-        orgId: profile.org_id,
-        branchId: profile.branch_id,
-        department: profile.department,
-        status: (profile.status || 'Active') as 'Active' | 'Inactive'
+        id: effectiveProfile.id,
+        email: effectiveProfile.email,
+        name: effectiveProfile.name,
+        role: normalizeRole(effectiveProfile.role),
+        orgId: effectiveProfile.org_id,
+        branchId: effectiveProfile.branch_id,
+        department: effectiveProfile.department,
+        status: (effectiveProfile.status || 'Active') as 'Active' | 'Inactive'
     };
 }
 
@@ -98,17 +92,6 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
  * Check if user has a specific permission
  */
 export async function hasPermission(permissionName: string): Promise<boolean> {
-    const isMockDataEnabled = localStorage.getItem('useMockData') === 'true';
-    if (isMockDataEnabled) {
-        // In mock mode, allow admins to do everything
-        const mockSession = localStorage.getItem('autosuite_demo_session');
-        if (mockSession) {
-            const user = JSON.parse(mockSession);
-            return user.role === 'Admin' || user.role === 'admin' || user.role === 'super_admin';
-        }
-        return true; 
-    }
-
     const { data, error } = await supabase.rpc('has_permission', {
         required_permission: permissionName
     });
@@ -177,25 +160,6 @@ export async function getRolePermissions(role: Role): Promise<Permission[]> {
  * Get all users in a specific organization (Super Admin use case)
  */
 export async function getOrgUsersByOrgId(orgId: string): Promise<UserProfile[]> {
-    const isMockDataEnabled = localStorage.getItem('useMockData') === 'true';
-    if (isMockDataEnabled) {
-        const persistedUsers = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-        const { MOCK_USERS } = await import('../mockData');
-        const allMockUsers = [...MOCK_USERS, ...persistedUsers];
-
-        return allMockUsers
-            .filter(u => (u as any).org_id === orgId || orgId === 'demo-org')
-            .map(u => ({
-                id: u.id,
-                email: u.email,
-                name: u.name,
-                role: normalizeRole(u.role as string),
-                orgId: orgId,
-                branchId: null,
-                status: ((u as any).status || 'Active') as 'Active' | 'Inactive'
-            }));
-    }
-
     try {
         const { data, error } = await supabase
             .from('profiles')
@@ -222,24 +186,6 @@ export async function getOrgUsersByOrgId(orgId: string): Promise<UserProfile[]> 
  * Get all users in current organization
  */
 export async function getOrgUsers(): Promise<UserProfile[]> {
-    const isMockDataEnabled = localStorage.getItem('useMockData') === 'true';
-    if (isMockDataEnabled) {
-        // Import dynamic to avoid circular dependencies if any
-        const { MOCK_USERS } = await import('../mockData');
-        const persistedUsers = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-        const allMockUsers = [...MOCK_USERS, ...persistedUsers];
-
-        return allMockUsers.map(u => ({
-            id: u.id,
-            email: u.email,
-            name: u.name,
-            role: normalizeRole(u.role as string),
-            orgId: 'demo-org',
-            branchId: null,
-            status: 'Active' as const
-        }));
-    }
-
     const profile = await getCurrentUserProfile();
 
     if (!profile?.orgId) return [];
@@ -326,44 +272,9 @@ export async function createUser(
         return { success: false, error: 'User not associated with organization' };
     }
 
-    // Check if mock data is enabled
-    const isMockDataEnabled = localStorage.getItem('useMockData') === 'true';
-
-    if (isMockDataEnabled) {
-        const newUser: UserProfile = {
-            id: `U${Math.floor(Math.random() * 1000)}`,
-            email,
-            name,
-            role,
-            orgId: currentProfile?.orgId || 'demo-org',
-            branchId: null,
-            department: department || '',
-            status: 'Active'
-        };
-        
-        // Persist in localStorage so they survive reloads
-        const storedMockUsers = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-        storedMockUsers.push({
-            ...newUser,
-            password, // Store password for mock login check
-            branchId: 'B001'
-        });
-        localStorage.setItem('autosuite_persisted_mock_users', JSON.stringify(storedMockUsers));
-        
-        return { success: true, data: newUser };
-    }
-
     try {
-        // Use the Supabase Edge Function for direct user creation
-        // This bypasses email confirmation and is more secure.
         const { data, error } = await supabase.functions.invoke('create-user', {
-            body: { 
-                email, 
-                password, 
-                name, 
-                role, 
-                department 
-            }
+            body: { email, password, name, role, department }
         });
 
         if (error) throw error;
@@ -552,13 +463,6 @@ export function getRoleColor(role: Role): string {
  * List all organizations (Super Admin only)
  */
 export async function listOrganizations(): Promise<Organization[]> {
-    const isMockData = localStorage.getItem('useMockData') === 'true';
-    if (isMockData) {
-        const { MOCK_ORGANIZATIONS } = await import('../mockData');
-        const persistedOrgs = JSON.parse(localStorage.getItem('autosuite_persisted_orgs') || '[]');
-        return [...MOCK_ORGANIZATIONS, ...persistedOrgs];
-    }
-
     const { data, error } = await supabase
         .from('organizations')
         .select('*')
@@ -642,53 +546,9 @@ export async function createOrganizationWithAdmin(
     adminPassword: string,
     adminName: string
 ): Promise<{ success: boolean; error?: string }> {
-    const isMockData = localStorage.getItem('useMockData') === 'true';
-
-    if (isMockData) {
-        const orgId = `org-${Date.now()}`;
-        const newOrg: Organization = {
-            id: orgId,
-            name: orgName,
-            slug: orgName.toLowerCase().replace(/\s+/g, '-'),
-            subscription_status: 'active',
-            createdAt: new Date().toISOString()
-        };
-
-        const persistedOrgs = JSON.parse(localStorage.getItem('autosuite_persisted_orgs') || '[]');
-        persistedOrgs.push(newOrg);
-        localStorage.setItem('autosuite_persisted_orgs', JSON.stringify(persistedOrgs));
-
-        // Create the admin user for this org
-        const newUser: UserProfile = {
-            id: `U-${Date.now()}`,
-            email: adminEmail,
-            name: adminName,
-            role: 'Admin',
-            orgId: orgId,
-            branchId: null,
-            status: 'Active'
-        };
-
-        const persistedUsers = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-        persistedUsers.push({
-            ...newUser,
-            password: adminPassword,
-            branchId: 'B001'
-        });
-        localStorage.setItem('autosuite_persisted_mock_users', JSON.stringify(persistedUsers));
-
-        return { success: true };
-    }
-
     try {
-        // We use the Edge Function for this as it needs to do both org and user creation
         const { data, error } = await supabase.functions.invoke('create-organization', {
-            body: {
-                orgName,
-                adminEmail,
-                adminPassword,
-                adminName
-            }
+            body: { orgName, adminEmail, adminPassword, adminName }
         });
 
         if (error) throw error;
@@ -704,27 +564,9 @@ export async function createOrganizationWithAdmin(
  * Reset a user's password (Super Admin only OR Admin in own org)
  */
 export async function resetUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
-    const isMockData = localStorage.getItem('useMockData') === 'true';
-    if (isMockData) {
-        let persistedUsers = JSON.parse(localStorage.getItem('autosuite_persisted_mock_users') || '[]');
-        const userIndex = persistedUsers.findIndex((u: any) => u.id === userId);
-        
-        if (userIndex > -1) {
-            persistedUsers[userIndex].password = newPassword;
-            localStorage.setItem('autosuite_persisted_mock_users', JSON.stringify(persistedUsers));
-            return { success: true };
-        }
-        return { success: true }; 
-    }
-
     try {
-        // Need to use Edge Function since client auth cannot update other users
         const { data, error } = await supabase.functions.invoke('create-user', {
-            body: {
-                id: userId,
-                password: newPassword,
-                action: 'update_password'
-            }
+            body: { id: userId, password: newPassword, action: 'update_password' }
         });
 
         if (error) throw error;

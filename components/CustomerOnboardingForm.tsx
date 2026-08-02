@@ -2,7 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, User, Phone, MapPin, Car, Palette, DollarSign, RefreshCw, FileText, ChevronDown, Camera, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../UI';
 import { ExchangeDetails } from '../types';
-import { useInventory } from '../api';
+import { useAuth } from '../AuthContext';
+import { PRODUCT_CATALOG } from '../constants';
+import { useInventory, useUsers } from '../api';
 
 interface CustomerOnboardingFormProps {
     isOpen: boolean;
@@ -11,7 +13,13 @@ interface CustomerOnboardingFormProps {
 }
 
 const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen, onClose, onSubmit }) => {
+    const { user } = useAuth();
     const { data: vehicles = [] } = useInventory();
+    const { data: users = [] } = useUsers();
+
+    const salesReps = useMemo(() => {
+        return users.filter(u => ['SalesRep', 'SalesManager', 'Admin'].includes(u.role));
+    }, [users]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -30,25 +38,39 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
         expectedValue: '',
         remarks: '',
         nextFollowUpDate: '',
-        exchangePhotoUrl: ''
+        exchangePhotoUrl: '',
+        ownerId: ''
     });
+
+    // Auto-set ownerId for SalesRep
+    useEffect(() => {
+        if (user && user.role === 'SalesRep') {
+            setFormData(prev => ({ ...prev, ownerId: user.id }));
+        }
+    }, [user]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Get unique models from inventory
+    // Derived activeCatalog (including custom database catalog templates)
+    const activeCatalog = useMemo(() => {
+        const dbCatalog = vehicles.filter(v => v.vin && v.vin.startsWith('CAT-'));
+        return dbCatalog.length > 0 ? dbCatalog : PRODUCT_CATALOG;
+    }, [vehicles]);
+
+    // Get unique models from all product catalogue
     const availableModels = useMemo(() => {
         const modelSet = new Set<string>();
-        vehicles.forEach(v => {
+        activeCatalog.forEach(v => {
             if (v.model) modelSet.add(v.model);
         });
         return Array.from(modelSet).sort();
-    }, [vehicles]);
+    }, [activeCatalog]);
 
-    // Get available colors for the selected model
+    // Get available colors for the selected model from active catalog
     const availableColors = useMemo(() => {
         if (!formData.modelInterest) return [];
 
         const colorsSet = new Set<string>();
-        vehicles
+        activeCatalog
             .filter(v => v.model === formData.modelInterest)
             .forEach(v => {
                 // Add colors from availableColors if present
@@ -60,7 +82,7 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                 }
             });
         return Array.from(colorsSet).sort();
-    }, [vehicles, formData.modelInterest]);
+    }, [activeCatalog, formData.modelInterest]);
 
     // Reset color when model changes
     useEffect(() => {
@@ -97,8 +119,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
             aiScore: 50, // Default, will be calculated by AI
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            ownerId: 'System', // Will be assigned by manager
-            branchId: 'B1',
+            ownerId: formData.ownerId || null,
+            branchId: user?.branchId || 'B1',
             quotation_issued: false,
             exchange,
             remarks: formData.remarks || undefined,
@@ -116,7 +138,8 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                 modelInterest: '', vehicleColor: '', budget: '', temperature: 'Warm',
                 companyName: '', panNumber: '',
                 hasExchange: false, exchangeVehicle: '', expectedValue: '', remarks: '',
-                nextFollowUpDate: '', exchangePhotoUrl: ''
+                nextFollowUpDate: '', exchangePhotoUrl: '',
+                ownerId: user?.role === 'SalesRep' ? user.id : ''
             });
         } catch (error) {
             // Error handled by parent toast usually, but we stop loading
@@ -337,11 +360,39 @@ const CustomerOnboardingForm: React.FC<CustomerOnboardingFormProps> = ({ isOpen,
                                     >
                                         <option value="Hot">🔥 Hot (Ready to Buy)</option>
                                         <option value="Warm">⚡ Warm (Interested)</option>
-                                        <option value="Cold">❄️ Cold (Just Looking)</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Consultant Assignment (Only for Admin/Manager) */}
+                        {user && (user.role === 'Admin' || user.role === 'SalesManager' || user.role === 'SuperAdmin') && (
+                            <div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <User size={16} className="text-blue-600" />
+                                    Consultant Assignment
+                                </h3>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-2">Assign to Sales Consultant</label>
+                                    <div className="relative">
+                                        <select
+                                            value={formData.ownerId}
+                                            onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
+                                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
+                                        >
+                                            <option value="">Leave Unassigned</option>
+                                            {salesReps.map(rep => (
+                                                <option key={rep.id} value={rep.id}>{rep.name} ({rep.role})</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2 italic">
+                                        Selecting a consultant will immediately notify them of this new lead.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Exchange Details */}
                         <div>

@@ -5,8 +5,7 @@ import { Button, Card, useToast } from '../UI';
 import { Printer, X, Settings, Plus, Trash2, RotateCcw, FileText, User, Building2 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { PRODUCT_CATALOG, LOCAL_BANKS } from '../constants';
-
-const ENHANCED_VEHICLES = PRODUCT_CATALOG;
+import { useInventory } from '../api';
 
 const LOCAL_PROFILE = {
     dealerName: 'Lalitpur Auto Works Pvt. Ltd.',
@@ -23,6 +22,10 @@ interface QuotationBuilderProps {
 }
 
 const QuotationBuilder: React.FC<QuotationBuilderProps> = ({ lead, isOpen, onClose }) => {
+    const { data: vehicles = [] } = useInventory();
+    const dbCatalogVehicles = vehicles.filter(v => v.vin && v.vin.startsWith('CAT-'));
+    const ENHANCED_VEHICLES = dbCatalogVehicles.length > 0 ? dbCatalogVehicles : PRODUCT_CATALOG;
+
     const { user } = useAuth();
     const { addToast } = useToast();
     const [selectedBankId, setSelectedBankId] = useState<string>('');

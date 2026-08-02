@@ -146,6 +146,57 @@ export const PRODUCT_CATALOG: Vehicle[] = [
             { label: 'Battery Capacity', value: '66.8 kWh' },
             { label: 'Range (CLTC)', value: '520 km' }
         ]
+    },
+    {
+        id: 'CAT-S05-MAX-ORANGE', model: 'Deepal S05 MAX', variant: 'Orange Interior', year: 2025, color: 'Moonlight White', status: 'In Stock',
+        price: 6299000, cost: 5300000, branchId: 'B1', daysInStock: 0, agingBucket: '0-30', fuelType: 'EV',
+        image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png', vin: '',
+        availableColors: [
+            { color: 'Mercury Silver', image: 'https://changannepal.com/assets/frontend/images/s05/color/1.png' },
+            { color: 'Deep Space Black', image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png' },
+            { color: 'Andromeda Blue', image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png' },
+            { color: 'Ganymede Grey', image: 'https://changannepal.com/assets/frontend/images/s05/color/4.png' },
+            { color: 'Moonlight White', image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png' }
+        ],
+        specifications: [
+            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
+            { label: 'Battery Capacity', value: '66.8 kWh' },
+            { label: 'Range (CLTC)', value: '520 km' }
+        ]
+    },
+    {
+        id: 'CAT-S05-MAX-BLACK', model: 'Deepal S05 MAX', variant: 'Black Interior', year: 2025, color: 'Deep Space Black', status: 'In Stock',
+        price: 6249000, cost: 5250000, branchId: 'B1', daysInStock: 0, agingBucket: '0-30', fuelType: 'EV',
+        image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png', vin: '',
+        availableColors: [
+            { color: 'Mercury Silver', image: 'https://changannepal.com/assets/frontend/images/s05/color/1.png' },
+            { color: 'Deep Space Black', image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png' },
+            { color: 'Andromeda Blue', image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png' },
+            { color: 'Ganymede Grey', image: 'https://changannepal.com/assets/frontend/images/s05/color/4.png' },
+            { color: 'Moonlight White', image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png' }
+        ],
+        specifications: [
+            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
+            { label: 'Battery Capacity', value: '66.8 kWh' },
+            { label: 'Range (CLTC)', value: '520 km' }
+        ]
+    },
+    {
+        id: 'CAT-S05-PLUS-BLACK', model: 'Deepal S05 Plus', variant: 'Black Interior', year: 2025, color: 'Deep Space Black', status: 'In Stock',
+        price: 5799000, cost: 4900000, branchId: 'B1', daysInStock: 0, agingBucket: '0-30', fuelType: 'EV',
+        image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png', vin: '',
+        availableColors: [
+            { color: 'Mercury Silver', image: 'https://changannepal.com/assets/frontend/images/s05/color/1.png' },
+            { color: 'Deep Space Black', image: 'https://changannepal.com/assets/frontend/images/s05/color/2.png' },
+            { color: 'Andromeda Blue', image: 'https://changannepal.com/assets/frontend/images/s05/color/3.png' },
+            { color: 'Ganymede Grey', image: 'https://changannepal.com/assets/frontend/images/s05/color/4.png' },
+            { color: 'Moonlight White', image: 'https://changannepal.com/assets/frontend/images/s05/color/5.png' }
+        ],
+        specifications: [
+            { label: 'Motor Peak Power', value: '160 kW (215 HP)' },
+            { label: 'Battery Capacity', value: '66.8 kWh' },
+            { label: 'Range (CLTC)', value: '520 km' }
+        ]
     }
 ];
 

@@ -61,6 +61,7 @@ export interface Activity {
   description?: string;
   createdAt: string;
   createdBy: string;
+  orgId?: string;
 }
 
 export interface ExchangeDetails {
@@ -125,6 +126,7 @@ export type LeadViewMode = 'LIST' | 'KANBAN';
 
 export interface Vehicle {
   id: string;
+  orgId?: string | null;
   model: string;
   variant: string;
   year: number;
@@ -142,6 +144,17 @@ export interface Vehicle {
   // Dynamic Specs for Quotation Engine (e.g., Battery Capacity vs Engine CC)
   specifications?: { label: string; value: string }[];
   agingBucket: '0-30' | '31-60' | '61-90' | '90+';
+  createdAt?: string;
+  proformaInvoiceNo?: string;
+  lcNo?: string;
+  motorNo?: string;
+  registrationNo?: string;
+  piId?: string | null;
+  vehicleState?: string;
+  reservedFor?: string;
+  expectedDeliveryDate?: string | null;
+  grnNumber?: string | null;
+  chassisNo?: string | null;
 }
 
 export interface ServiceJob {
@@ -174,7 +187,7 @@ export interface Customer {
   ltv: number;
   lastServiceAt: string | null;
   nextServiceDueAt: string | null;
-  carsOwned: { model: string; plate: string; status: string }[];
+  carsOwned: any[];
   referrals: number;
 }
 
@@ -380,5 +393,102 @@ export interface AuditLog {
   newValues?: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
+  createdAt: string;
+}
+
+// =====================================================
+// PHASE 4: STATE MACHINE TYPES
+// =====================================================
+
+export type VehicleState =
+  | 'PO_ISSUED' | 'LC_OPENED' | 'IN_TRANSIT' | 'RECEIVED' | 'IN_STOCK'
+  | 'BOOKED' | 'ALLOCATED' | 'PAYMENT_STRUCTURED'
+  | 'INSURANCE_ACTIVATION' | 'BANK_ALLOTMENT' | 'DOTM_REGISTRATION'
+  | 'INSURANCE_ENDORSEMENT' | 'BANK_DISBURSEMENT' | 'READY_FOR_DELIVERY'
+  | 'DELIVERED';
+
+export type PaymentType = 'FULL_PAYMENT' | 'FINANCED';
+
+export interface ProformaInvoice {
+  id: string;
+  piNumber: string;
+  supplier: string;
+  issueDate: string;
+  totalAmount: number;
+  currency: string;
+  notes?: string;
+  orgId?: string;
+  // Computed / Relations
+  lc?: LetterOfCredit;
+  vehicles?: Vehicle[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LetterOfCredit {
+  id: string;
+  lcNumber: string;
+  piId: string;
+  bankName: string;
+  bankBranch?: string;
+  openingDate: string;
+  expiryDate?: string;
+  amount: number;
+  currency: string;
+  targetCycleDays: number;
+  orgId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Computed
+  daysSinceOpening?: number;
+  isOverdue?: boolean;
+}
+
+export interface SaleRecord {
+  id: string;
+  customerId: string;
+  vehicleId: string;
+  currentState: string;
+  paymentType?: PaymentType;
+  bookingAmount: number;
+  salePrice: number;
+  bookingDate?: string;
+  allocationDate?: string;
+  bankName?: string;
+  bankBranch?: string;
+  rmName?: string;
+  rmPhone?: string;
+  approvedLoan?: number;
+  insuranceActivatedAt?: string;
+  insuranceEndorsedAt?: string;
+  insurancePolicyNo?: string;
+  dotmRep: string;
+  registrationNo?: string;
+  registeredAt?: string;
+  registeredUnder?: string;
+  disbursementRequestedAt?: string;
+  disbursementReceivedAt?: string;
+  disbursementAmount?: number;
+  readyForDeliveryAt?: string;
+  deliveredAt?: string;
+  orgId?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Joined
+  customer?: Customer;
+  vehicle?: Vehicle;
+}
+
+export interface DealStep {
+  id: string;
+  entityType: string;
+  entityId: string;
+  fromState?: string;
+  toState: string;
+  performedBy?: string;
+  metadata?: Record<string, any>;
+  notes?: string;
+  orgId?: string;
   createdAt: string;
 }

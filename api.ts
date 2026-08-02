@@ -1,23 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './lib/supabase';
 import { Lead, Vehicle, ServiceJob, Campaign, DashboardExceptions, Customer, Invoice, Part, Appointment, User, Activity } from './types';
-import * as MockData from './mockData';
+import { normalizeRole, useAuthStore } from './lib/store';
 
 // Re-export supabase for direct use
 export { supabase };
 
-// Helper to check if mock data mode is enabled
-const isMockDataEnabled = () => {
-  return localStorage.getItem('useMockData') === 'true';
-};
-
 export const api = {
   dashboard: {
     getExceptions: async (): Promise<DashboardExceptions> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_DASHBOARD_EXCEPTIONS;
-      }
-
       const now = new Date();
       const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
       const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
@@ -50,10 +41,6 @@ export const api = {
   },
   leads: {
     list: async (): Promise<Lead[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_LEADS;
-      }
-
       const { data, error } = await supabase
         .from('leads')
         .select('*, ownerNode:profiles!owner_id(name)')
@@ -90,33 +77,6 @@ export const api = {
       }));
     },
     create: async (lead: Partial<Lead>): Promise<Lead> => {
-      if (isMockDataEnabled()) {
-        const newLead: Lead = {
-          id: `mock-${Date.now()}`,
-          name: lead.name || '',
-          phone: lead.phone || '',
-          email: lead.email,
-          address: lead.address,
-          source: lead.source || 'Walk-in',
-          modelInterest: lead.modelInterest || '',
-          vehicleColor: lead.vehicleColor,
-          budget: lead.budget || 0,
-          status: lead.status || 'New',
-          temperature: lead.temperature || 'Warm',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          aiScore: 50,
-          ownerId: lead.ownerId || null,
-          branchId: lead.branchId || 'b1',
-          quotationIssued: false,
-          exchange: lead.exchange || { hasExchange: false },
-          remarks: lead.remarks,
-          notes: []
-        };
-        MockData.MOCK_LEADS.unshift(newLead);
-        return newLead;
-      }
-
       const { data, error } = await supabase
         .from('leads')
         .insert([{
@@ -151,7 +111,8 @@ export const api = {
         status: 'status', temperature: 'temperature', budget: 'budget', quotationIssued: 'quotation_issued',
         exchange: 'exchange_details',
         testDriveDate: 'test_drive_date', nextFollowUpDate: 'next_follow_up_date',
-        bookingDate: 'booking_date', deliveryDate: 'delivery_date', remarks: 'remarks'
+        bookingDate: 'booking_date', deliveryDate: 'delivery_date', remarks: 'remarks',
+        ownerId: 'owner_id'
       };
 
       (Object.keys(patch) as Array<keyof Lead>).forEach(key => {
@@ -174,13 +135,9 @@ export const api = {
   },
   inventory: {
     list: async (): Promise<Vehicle[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_VEHICLES;
-      }
-
       const { data, error } = await supabase
         .from('vehicles')
-        .select('*')
+        .select('*, sale_records(id, current_state, customers(name))')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -193,8 +150,12 @@ export const api = {
         else if (daysInStock > 60) agingBucket = '61-90';
         else if (daysInStock > 30) agingBucket = '31-60';
 
+        const activeSale = v.sale_records?.find((sr: any) => sr.current_state !== 'DELIVERED');
+        const reservedFor = activeSale?.customers?.name || undefined;
+
         return {
           id: v.id,
+          orgId: v.org_id || null,
           model: v.model,
           variant: v.variant,
           year: v.year,
@@ -209,51 +170,58 @@ export const api = {
           image: v.image_url || '',
           specifications: v.specifications as any || [],
           availableColors: v.available_colors as any || [],
-          agingBucket
+          agingBucket,
+          createdAt: v.created_at || '',
+          proformaInvoiceNo: v.proforma_invoice_no || '',
+          lcNo: v.lc_no || '',
+          motorNo: v.motor_no || '',
+          registrationNo: v.registration_no || '',
+                  piId: v.pi_id || null,
+          lcId: v.lc_id || null,
+          vehicleState: v.vehicle_state || 'IN_STOCK',
+          expectedDeliveryDate: v.expected_delivery_date || null,
+          grnNumber: v.grn_number || null,
+          chassisNo: v.chassis_no || null,
+          reservedFor
         };
       });
     },
     create: async (vehicle: Partial<Vehicle>): Promise<Vehicle> => {
-      if (isMockDataEnabled()) {
-        // Mock mode: add to mock data array and return
-        const newVehicle: Vehicle = {
-          id: `mock-${Date.now()}`,
-          model: vehicle.model || '',
-          variant: vehicle.variant || '',
-          year: vehicle.year || 2024,
-          color: vehicle.color || '',
-          vin: vehicle.vin || `VIN-${Date.now()}`,
-          price: vehicle.price || 0,
-          cost: vehicle.cost || 0,
-          status: vehicle.status || 'In Stock',
-          fuelType: vehicle.fuelType || 'Petrol',
-          image: vehicle.image || '',
-          specifications: vehicle.specifications || [],
-          availableColors: vehicle.availableColors || [],
-          branchId: vehicle.branchId || '',
-          daysInStock: 0,
-          agingBucket: '0-30'
-        };
-        MockData.MOCK_VEHICLES.push(newVehicle);
-        return newVehicle;
+      const userOrgId = useAuthStore.getState().user?.orgId;
+
+      const insertPayload: any = {
+        model: vehicle.model || '',
+        variant: vehicle.variant || '',
+        year: vehicle.year || 2024,
+        color: vehicle.color || '',
+        vin: vehicle.vin || '',
+        price: vehicle.price || 0,
+        cost: vehicle.cost || 0,
+        status: vehicle.status || 'In Stock',
+        fuel_type: vehicle.fuelType || 'Petrol',
+        image_url: vehicle.image || '',
+        specifications: (vehicle.specifications || []) as any,
+        available_colors: (vehicle.availableColors || []) as any,
+        proforma_invoice_no: vehicle.proformaInvoiceNo || '',
+        lc_no: vehicle.lcNo || '',
+        motor_no: vehicle.motorNo || '',
+        registration_no: vehicle.registrationNo || '',
+        pi_id: vehicle.piId || null,
+        lc_id: vehicle.lcId || null,
+        vehicle_state: vehicle.vehicleState || 'IN_STOCK',
+        expected_delivery_date: vehicle.expectedDeliveryDate || null,
+        grn_number: vehicle.grnNumber || null,
+        chassis_no: vehicle.chassisNo || null,
+        org_id: userOrgId || null
+      };
+
+      if (vehicle.createdAt) {
+        insertPayload.created_at = vehicle.createdAt;
       }
 
       const { data, error } = await supabase
         .from('vehicles')
-        .insert([{
-          model: vehicle.model || '',
-          variant: vehicle.variant || '',
-          year: vehicle.year || 2024,
-          color: vehicle.color || '',
-          vin: vehicle.vin || '',
-          price: vehicle.price || 0,
-          cost: vehicle.cost || 0,
-          status: vehicle.status || 'In Stock',
-          fuel_type: vehicle.fuelType || 'Petrol',
-          image_url: vehicle.image || '',
-          specifications: (vehicle.specifications || []) as any,
-          available_colors: (vehicle.availableColors || []) as any
-        } as any])
+        .insert([insertPayload])
         .select()
         .single();
 
@@ -261,18 +229,7 @@ export const api = {
       return data as any;
     },
     update: async (id: string, patch: Partial<Vehicle>): Promise<Vehicle> => {
-      if (isMockDataEnabled()) {
-        // Mock mode: update in mock data array
-        const idx = MockData.MOCK_VEHICLES.findIndex(v => v.id === id);
-        if (idx !== -1) {
-          MockData.MOCK_VEHICLES[idx] = { ...MockData.MOCK_VEHICLES[idx], ...patch };
-          return MockData.MOCK_VEHICLES[idx];
-        }
-        throw new Error('Vehicle not found in mock data');
-      }
-
       const dbPatch: any = {};
-      // Use hasOwnProperty check instead of truthy check to allow updating to empty/zero values
       if (patch.hasOwnProperty('model')) dbPatch.model = patch.model;
       if (patch.hasOwnProperty('variant')) dbPatch.variant = patch.variant;
       if (patch.hasOwnProperty('year')) dbPatch.year = patch.year;
@@ -285,10 +242,25 @@ export const api = {
       if (patch.hasOwnProperty('image')) dbPatch.image_url = patch.image;
       if (patch.hasOwnProperty('specifications')) dbPatch.specifications = patch.specifications;
       if (patch.hasOwnProperty('availableColors')) dbPatch.available_colors = patch.availableColors;
+      if (patch.hasOwnProperty('proformaInvoiceNo')) dbPatch.proforma_invoice_no = patch.proformaInvoiceNo;
+      if (patch.hasOwnProperty('lcNo')) dbPatch.lc_no = patch.lcNo;
+      if (patch.hasOwnProperty('motorNo')) dbPatch.motor_no = patch.motorNo;
+      if (patch.hasOwnProperty('registrationNo')) dbPatch.registration_no = patch.registrationNo;
+      if (patch.hasOwnProperty('createdAt')) dbPatch.created_at = patch.createdAt;
+      if (patch.hasOwnProperty('piId')) dbPatch.pi_id = patch.piId;
+      if (patch.hasOwnProperty('lcId')) dbPatch.lc_id = patch.lcId;
+      if (patch.hasOwnProperty('vehicleState')) dbPatch.vehicle_state = patch.vehicleState;
+      if (patch.hasOwnProperty('expectedDeliveryDate')) dbPatch.expected_delivery_date = patch.expectedDeliveryDate;
+      if (patch.hasOwnProperty('grnNumber')) dbPatch.grn_number = patch.grnNumber;
+      if (patch.hasOwnProperty('chassisNo')) dbPatch.chassis_no = patch.chassisNo;
+
+      const cleanPatch = Object.fromEntries(
+        Object.entries(dbPatch).filter(([_, v]) => v !== undefined)
+      );
 
       const { data, error } = await supabase
         .from('vehicles')
-        .update(dbPatch)
+        .update(cleanPatch)
         .eq('id', id)
         .select()
         .single();
@@ -297,25 +269,12 @@ export const api = {
       return data as any;
     },
     delete: async (id: string): Promise<void> => {
-      if (isMockDataEnabled()) {
-        // Mock mode: remove from mock data array
-        const idx = MockData.MOCK_VEHICLES.findIndex(v => v.id === id);
-        if (idx !== -1) {
-          MockData.MOCK_VEHICLES.splice(idx, 1);
-        }
-        return;
-      }
-
       const { error } = await supabase.from('vehicles').delete().eq('id', id);
       if (error) throw error;
     }
   },
   service: {
     list: async (): Promise<ServiceJob[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_SERVICE_JOBS;
-      }
-
       const { data, error } = await supabase
         .from('service_jobs')
         .select('*, customers(name)')
@@ -326,8 +285,7 @@ export const api = {
       return ((data as any[]) || []).map(j => ({
         id: j.id,
         customerId: j.customer_id || '',
-        // @ts-ignore
-        customerName: j.customers?.name || 'Unknown',
+        customerName: (j as any).customers?.name || 'Unknown',
         vehicleModel: j.vehicle_model,
         regNumber: j.reg_number,
         type: j.type as any,
@@ -355,7 +313,6 @@ export const api = {
       return {
         id: d.id,
         customerId: d.customer_id || '',
-        // @ts-ignore
         customerName: d.customers?.name || 'Unknown',
         vehicleModel: d.vehicle_model,
         regNumber: d.reg_number,
@@ -372,28 +329,6 @@ export const api = {
       };
     },
     create: async (job: Partial<ServiceJob>): Promise<ServiceJob> => {
-      if (isMockDataEnabled()) {
-        const newJob: ServiceJob = {
-          id: `JOB-${Date.now()}`,
-          customerId: job.customerId || '',
-          customerName: job.customerName || '',
-          vehicleModel: job.vehicleModel || '',
-          regNumber: job.regNumber || '',
-          type: job.type || 'Repair',
-          status: 'Queued',
-          technicianId: job.technicianId || null,
-          branchId: job.branchId || 'b1',
-          createdAt: new Date().toISOString(),
-          promisedAt: job.promisedAt || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          costEstimate: job.costEstimate || 0,
-          actualCost: 0,
-          isOverdue: false,
-          notes: []
-        };
-        MockData.MOCK_SERVICE_JOBS.unshift(newJob);
-        return newJob;
-      }
-
       const { data, error } = await supabase
         .from('service_jobs')
         .insert([{
@@ -433,9 +368,6 @@ export const api = {
   },
   marketing: {
     listCampaigns: async (): Promise<Campaign[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_CAMPAIGNS;
-      }
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -458,10 +390,6 @@ export const api = {
   },
   customers: {
     list: async (): Promise<Customer[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_CUSTOMERS;
-      }
-
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -486,18 +414,40 @@ export const api = {
       }));
     },
     create: async (customer: Partial<Customer>): Promise<Customer> => {
+      const isValidUUID = (uuidStr: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuidStr);
+      const validBranchId = customer.branchId && isValidUUID(customer.branchId) ? customer.branchId : null;
+
       const { data, error } = await supabase
         .from('customers')
         .insert([{
           name: customer.name || '',
           phone: customer.phone || '',
           email: customer.email || '',
-          company_name: customer.companyName || '',
-          pan_number: customer.panNumber || '',
           location: customer.location || '',
-          branch_id: customer.branchId || '',
-          cars_owned: (customer.carsOwned || []) as any
+          branch_id: validBranchId,
+          cars_owned: (customer.carsOwned || []) as any,
+          org_id: useAuthStore.getState().user?.orgId || null
         } as any])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as any;
+    },
+    update: async (id: string, patch: Partial<Customer>): Promise<Customer> => {
+      const dbPatch: any = {};
+      if (patch.hasOwnProperty('name')) dbPatch.name = patch.name;
+      if (patch.hasOwnProperty('phone')) dbPatch.phone = patch.phone;
+      if (patch.hasOwnProperty('email')) dbPatch.email = patch.email;
+      if (patch.hasOwnProperty('location')) dbPatch.location = patch.location;
+      if (patch.hasOwnProperty('ltv')) dbPatch.ltv = patch.ltv;
+      if (patch.hasOwnProperty('carsOwned')) dbPatch.cars_owned = patch.carsOwned;
+      if (patch.hasOwnProperty('referrals')) dbPatch.referrals = patch.referrals;
+
+      const { data, error } = await supabase
+        .from('customers')
+        .update(dbPatch)
+        .eq('id', id)
         .select()
         .single();
 
@@ -507,10 +457,6 @@ export const api = {
   },
   finance: {
     listInvoices: async (): Promise<Invoice[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_INVOICES;
-      }
-
       const { data, error } = await supabase
         .from('invoices')
         .select('*, customers(name), invoice_items(*)')
@@ -542,9 +488,6 @@ export const api = {
   },
   parts: {
     list: async (): Promise<Part[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_PARTS;
-      }
       const { data, error } = await supabase.from('parts').select('*');
       if (error) throw error;
       return ((data as any[]) || []).map(p => ({
@@ -563,11 +506,6 @@ export const api = {
       }));
     },
     updateStock: async (id: string, newStock: number): Promise<void> => {
-      if (isMockDataEnabled()) {
-        const part = MockData.MOCK_PARTS.find(p => p.id === id);
-        if (part) part.stock = newStock;
-        return;
-      }
       const { error } = await supabase
         .from('parts')
         .update({ stock: newStock })
@@ -577,9 +515,6 @@ export const api = {
   },
   calendar: {
     listAppointments: async (): Promise<Appointment[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_APPOINTMENTS;
-      }
       const { data, error } = await supabase.from('appointments').select('*');
       if (error) throw error;
       return ((data as any[]) || []).map(a => ({
@@ -596,22 +531,6 @@ export const api = {
       }));
     },
     create: async (appointment: Partial<Appointment>): Promise<Appointment | null> => {
-      if (isMockDataEnabled()) {
-        const newAppt: Appointment = {
-          id: `appt-${Date.now()}`,
-          title: appointment.title || '',
-          start: appointment.start || new Date().toISOString(),
-          end: appointment.end || new Date().toISOString(),
-          type: appointment.type || 'Meeting',
-          customerId: appointment.customerId,
-          customerName: appointment.customerName,
-          status: 'Confirmed',
-          notes: appointment.notes
-        };
-        MockData.MOCK_APPOINTMENTS.unshift(newAppt);
-        return newAppt;
-      }
-
       const { data, error } = await supabase
         .from('appointments')
         .insert([{
@@ -646,16 +565,13 @@ export const api = {
   },
   users: {
     list: async (): Promise<User[]> => {
-      if (isMockDataEnabled()) {
-        return MockData.MOCK_USERS;
-      }
       const { data, error } = await supabase.from('profiles').select('*');
       if (error) throw error;
       return ((data as any[]) || []).map(u => ({
         id: u.id,
         name: u.name,
         email: u.email,
-        role: u.role as any,
+        role: normalizeRole(u.role),
         branchId: u.branch_id || '',
         avatar: u.avatar_url || undefined,
         status: u.status as any
@@ -664,9 +580,6 @@ export const api = {
   },
   activities: {
     listByEntity: async (entityId: string, entityType: string): Promise<Activity[]> => {
-      if (isMockDataEnabled()) {
-        return [];
-      }
       const { data, error } = await supabase
         .from('activities')
         .select('*')
@@ -687,6 +600,21 @@ export const api = {
       }));
     },
     create: async (activity: Partial<Activity>): Promise<Activity> => {
+      let orgId = activity.orgId;
+
+      if (!orgId) {
+        const session = (await supabase.auth.getSession()).data.session;
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .or(`user_id.eq.${session.user.id},id.eq.${session.user.id}`)
+            .eq('is_active', true)
+            .maybeSingle();
+          if (profile) orgId = profile.org_id;
+        }
+      }
+
       const { data, error } = await supabase
         .from('activities')
         .insert([{
@@ -695,13 +623,242 @@ export const api = {
           kind: activity.kind,
           title: activity.title,
           description: activity.description,
-          created_by: activity.createdBy
+          created_by: activity.createdBy,
+          org_id: orgId || undefined
         } as any])
         .select()
         .single();
 
+    }
+  },
+  procurement: {
+    listPIs: async (): Promise<any[]> => {
+      const { data, error } = await (supabase as any)
+        .from('proforma_invoices')
+        .select('*, letters_of_credit(*), vehicles(id)')
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as any;
+      return ((data as any[]) || []).map(pi => ({
+        id: pi.id,
+        piNumber: pi.pi_number,
+        supplier: pi.supplier,
+        issueDate: pi.issue_date,
+        totalAmount: Number(pi.total_amount),
+        currency: pi.currency,
+        notes: pi.notes,
+        units: pi.units ?? 1,
+        linkedVehicleCount: (pi.vehicles || []).length,
+        lc: pi.letters_of_credit?.[0] ? {
+          id: pi.letters_of_credit[0].id,
+          lcNumber: pi.letters_of_credit[0].lc_number,
+          piId: pi.letters_of_credit[0].pi_id,
+          bankName: pi.letters_of_credit[0].bank_name,
+          bankBranch: pi.letters_of_credit[0].bank_branch,
+          openingDate: pi.letters_of_credit[0].opening_date,
+          expiryDate: pi.letters_of_credit[0].expiry_date,
+          amount: Number(pi.letters_of_credit[0].amount),
+          currency: pi.letters_of_credit[0].currency,
+          targetCycleDays: pi.letters_of_credit[0].target_cycle_days
+        } : undefined
+      }));
+    },
+    createPI: async (pi: any): Promise<any> => {
+      const orgId = useAuthStore.getState().user?.orgId;
+      const { data, error } = await (supabase as any)
+        .from('proforma_invoices')
+        .insert([{
+          pi_number: pi.piNumber,
+          supplier: pi.supplier || 'MAW',
+          issue_date: pi.issueDate,
+          total_amount: pi.totalAmount || 0,
+          currency: pi.currency || 'NPR',
+          notes: pi.notes || null,
+          units: pi.units || 1,
+          org_id: orgId || null
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    createLC: async (lc: any): Promise<any> => {
+      const orgId = useAuthStore.getState().user?.orgId;
+      const { data, error } = await supabase
+        .from('letters_of_credit')
+        .insert([{
+          lc_number: lc.lcNumber,
+          pi_id: lc.piId,
+          bank_name: lc.bankName,
+          bank_branch: lc.bankBranch || null,
+          opening_date: lc.openingDate,
+          expiry_date: lc.expiryDate || null,
+          amount: lc.amount || 0,
+          currency: lc.currency || 'NPR',
+          target_cycle_days: lc.targetCycleDays || 90,
+          org_id: orgId || null
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  },
+  deals: {
+    listSaleRecords: async (): Promise<any[]> => {
+      const { data, error } = await (supabase as any)
+        .from('sale_records')
+        .select('*, customers(*), vehicles(*)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(r => ({
+        id: r.id,
+        customerId: r.customer_id,
+        vehicleId: r.vehicle_id,
+        currentState: r.current_state,
+        paymentType: r.payment_type,
+        bookingAmount: Number(r.booking_amount),
+        salePrice: Number(r.sale_price),
+        bookingDate: r.booking_date,
+        allocationDate: r.allocation_date,
+        bankName: r.bank_name,
+        bankBranch: r.bank_branch,
+        rmName: r.rm_name,
+        rmPhone: r.rm_phone,
+        approvedLoan: r.approved_loan ? Number(r.approved_loan) : undefined,
+        insuranceActivatedAt: r.insurance_activated_at,
+        insuranceEndorsedAt: r.insurance_endorsed_at,
+        insurancePolicyNo: r.insurance_policy_no,
+        dotmRep: r.dotm_rep,
+        registrationNo: r.registration_no,
+        registeredAt: r.registered_at,
+        registeredUnder: r.registered_under,
+        disbursementRequestedAt: r.disbursement_requested_at,
+        disbursementReceivedAt: r.disbursement_received_at,
+        disbursementAmount: r.disbursement_amount ? Number(r.disbursement_amount) : undefined,
+        readyForDeliveryAt: r.ready_for_delivery_at,
+        deliveredAt: r.delivered_at,
+        customer: r.customers,
+        vehicle: r.vehicles ? {
+          id: (r.vehicles as any).id,
+          model: (r.vehicles as any).model,
+          variant: (r.vehicles as any).variant,
+          vin: (r.vehicles as any).vin,
+          color: (r.vehicles as any).color,
+          price: (r.vehicles as any).price,
+          status: (r.vehicles as any).status,
+          vehicleState: (r.vehicles as any).vehicle_state,
+          motorNo: (r.vehicles as any).motor_no,
+          registrationNo: (r.vehicles as any).registration_no
+        } : undefined
+      }));
+    },
+    createSaleRecord: async (record: any): Promise<any> => {
+      const orgId = useAuthStore.getState().user?.orgId;
+      const creatorId = useAuthStore.getState().user?.id;
+      const payload: any = {
+        customer_id: record.customerId,
+        current_state: record.currentState || 'BOOKED',
+        payment_type: record.paymentType || null,
+        booking_amount: record.bookingAmount || 0,
+        sale_price: record.salePrice || 0,
+        booking_date: record.bookingDate || new Date().toISOString().split('T')[0],
+        org_id: orgId || null,
+        created_by: creatorId || null
+      };
+      // Only include vehicle_id if provided (nullable field — booking can exist without a vehicle)
+      if (record.vehicleId) {
+        payload.vehicle_id = record.vehicleId;
+      }
+      const { data, error } = await (supabase as any)
+        .from('sale_records')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    updateSaleRecord: async (id: string, patch: any): Promise<any> => {
+      const dbPatch: any = {};
+      const fields = [
+        'vehicleId', 'currentState', 'paymentType', 'bookingAmount', 'salePrice',
+        'bookingDate', 'allocationDate', 'bankName', 'bankBranch',
+        'rmName', 'rmPhone', 'approvedLoan', 'insuranceActivatedAt',
+        'insuranceEndorsedAt', 'insurancePolicyNo', 'dotmRep',
+        'registrationNo', 'registeredAt', 'registeredUnder',
+        'disbursementRequestedAt', 'disbursementReceivedAt',
+        'disbursementAmount', 'readyForDeliveryAt', 'deliveredAt'
+      ];
+      
+      fields.forEach(f => {
+        if (patch[f] !== undefined) {
+          const dbKey = f.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          dbPatch[dbKey] = patch[f];
+        }
+      });
+
+      const { data, error } = await (supabase as any)
+        .from('sale_records')
+        .update(dbPatch)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    transitionState: async (params: { entityId: string, entityType: 'VEHICLE' | 'SALE', fromState: string, toState: string, notes?: string, metadata?: any }): Promise<any> => {
+      const orgId = useAuthStore.getState().user?.orgId;
+      const profileId = useAuthStore.getState().user?.id;
+
+      // 1. Insert Deal Step audit log
+      const { error: auditError } = await (supabase as any)
+        .from('deal_steps')
+        .insert([{
+          entity_type: params.entityType,
+          entity_id: params.entityId,
+          from_state: params.fromState,
+          to_state: params.toState,
+          performed_by: profileId || null,
+          notes: params.notes || null,
+          metadata: params.metadata || {},
+          org_id: orgId || null
+        }]);
+      if (auditError) throw auditError;
+
+      // 2. Perform conditional side-effects / updates
+      if (params.entityType === 'VEHICLE') {
+        const { error: vError } = await (supabase as any)
+          .from('vehicles')
+          .update({ vehicle_state: params.toState })
+          .eq('id', params.entityId);
+        if (vError) throw vError;
+      } else if (params.entityType === 'SALE') {
+        const { error: sError } = await (supabase as any)
+          .from('sale_records')
+          .update({ current_state: params.toState })
+          .eq('id', params.entityId);
+        if (sError) throw sError;
+      }
+
+      return { success: true };
+    },
+    listDealSteps: async (entityId: string): Promise<any[]> => {
+      const { data, error } = await (supabase as any)
+        .from('deal_steps')
+        .select('*, profiles(name)')
+        .eq('entity_id', entityId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return ((data as any) || []).map((step: any) => ({
+        id: step.id,
+        entityType: step.entity_type,
+        entityId: step.entity_id,
+        fromState: step.from_state,
+        toState: step.to_state,
+        performedBy: step.profiles?.name || step.performed_by,
+        metadata: step.metadata,
+        notes: step.notes,
+        createdAt: step.created_at
+      }));
     }
   }
 };
@@ -722,6 +879,59 @@ export const useInvoices = () => useQuery({ queryKey: ['invoices'], queryFn: api
 export const useParts = () => useQuery({ queryKey: ['parts'], queryFn: api.parts.list });
 export const useAppointments = () => useQuery({ queryKey: ['appointments'], queryFn: api.calendar.listAppointments });
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: api.users.list });
+
+export const useProformaInvoices = () => useQuery({ queryKey: ['proforma_invoices'], queryFn: api.procurement.listPIs });
+export const useSaleRecords = () => useQuery({ queryKey: ['sale_records'], queryFn: api.deals.listSaleRecords });
+export const useDealSteps = (entityId: string) => useQuery({
+  queryKey: ['deal_steps', entityId],
+  queryFn: () => api.deals.listDealSteps(entityId),
+  enabled: !!entityId
+});
+
+export const useCreatePI = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pi: any) => api.procurement.createPI(pi),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['proforma_invoices'] })
+  });
+};
+
+export const useCreateLC = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (lc: any) => api.procurement.createLC(lc),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['proforma_invoices'] })
+  });
+};
+
+export const useCreateSaleRecord = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (record: any) => api.deals.createSaleRecord(record),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sale_records'] })
+  });
+};
+
+export const useUpdateSaleRecord = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string, patch: any }) => api.deals.updateSaleRecord(id, patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sale_records'] })
+  });
+};
+
+export const useTransitionState = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { entityId: string, entityType: 'VEHICLE' | 'SALE', fromState: string, toState: string, notes?: string, metadata?: any }) =>
+      api.deals.transitionState(params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['deal_steps', variables.entityId] });
+      queryClient.invalidateQueries({ queryKey: ['sale_records'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    }
+  });
+};
 
 export const useUpdateLead = () => {
   const queryClient = useQueryClient();
@@ -759,6 +969,14 @@ export const useCreateCustomer = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (customer: Partial<Customer>) => api.customers.create(customer),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] })
+  });
+};
+
+export const useUpdateCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string, patch: Partial<Customer> }) => api.customers.update(id, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] })
   });
 };
@@ -805,8 +1023,7 @@ export const useCreateActivity = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (activity: Partial<Activity>) => api.activities.create(activity),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['activities', variables.entityId, variables.entityType] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] })
   });
 };
+

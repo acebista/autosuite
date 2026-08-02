@@ -147,6 +147,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onEdit, onDelete }) 
 
 const Catalog: React.FC = () => {
     const { data: products = [], isLoading } = useInventory();
+    const catalogProducts = products.filter(p => p.vin && p.vin.startsWith('CAT-'));
     const createVehicle = useCreateVehicle();
     const updateVehicle = useUpdateVehicle();
     const deleteVehicle = useDeleteVehicle();
@@ -184,7 +185,11 @@ const Catalog: React.FC = () => {
                 await updateVehicle.mutateAsync({ id: editingProduct.id, patch: formData });
                 addToast(`Updated ${formData.model}`, 'success');
             } else {
-                await createVehicle.mutateAsync(formData);
+                const finalFormData = {
+                    ...formData,
+                    vin: formData.vin || `CAT-${Date.now()}`
+                };
+                await createVehicle.mutateAsync(finalFormData);
                 addToast(`Created ${formData.model}`, 'success');
             }
             setIsEditorOpen(false);
@@ -257,7 +262,7 @@ const Catalog: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.map(product => (
+                    {catalogProducts.map(product => (
                         <ProductCard
                             key={product.id}
                             product={product}

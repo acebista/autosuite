@@ -3,7 +3,7 @@ import QuotationBuilder from './QuotationBuilder';
 import { X, Phone, Mail, MapPin, Car, Calendar, FileText, RefreshCw, Clock, CheckCircle, User, DollarSign, Edit2, Save, MessageCircle, ChevronDown, Sparkles, Image as ImageIcon, Plus, ArrowRight, Camera } from 'lucide-react';
 import { Button, Badge } from '../UI';
 import { Lead, Activity } from '../types';
-import { useActivities, useCreateActivity } from '../api';
+import { useActivities, useCreateActivity, useUsers } from '../api';
 import { useAuth } from '../AuthContext';
 
 // WhatsApp Message Templates
@@ -54,7 +54,13 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
 
     // Fetch history
     const { data: activities } = useActivities(lead?.id || '', 'LEAD');
+    const { data: users = [] } = useUsers();
     const createActivity = useCreateActivity();
+    
+    // I'll just use useUsers and filter reps.
+    const salesReps = React.useMemo(() => {
+        return users.filter(u => ['SalesRep', 'SalesManager', 'Admin'].includes(u.role));
+    }, [users]);
 
     if (!isOpen || !lead) return null;
 
@@ -67,7 +73,8 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
             budget: lead.budget,
             status: lead.status,
             nextFollowUpDate: lead.nextFollowUpDate,
-            exchange: lead.exchange || { hasExchange: false }
+            exchange: lead.exchange || { hasExchange: false },
+            ownerId: lead.ownerId || ''
         });
         setIsEditing(true);
     };
@@ -106,13 +113,11 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
 
     const handleConvert = async () => {
         if (!lead) return;
-        if (window.confirm(`Convert "${lead.name}" to a Deal? This will create a sale record and invoice.`)) {
-            setIsSubmitting(true);
-            try {
-                await onConvertToDeal(lead.id);
-            } finally {
-                setIsSubmitting(false);
-            }
+        setIsSubmitting(true);
+        try {
+            await onConvertToDeal(lead.id);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -132,7 +137,7 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                                 <span className="h-3 w-[1px] bg-white/20"></span>
                                 <span className="flex items-center gap-1 font-bold text-white">
                                     <User size={12} className="text-teal-400" />
-                                    Consultant: {lead.ownerName || 'Unassigned'}
+                                    Consultant: {lead.ownerName || users.find(u => u.id === lead.ownerId)?.name || 'Unassigned'}
                                 </span>
                             </div>
                         </div>
@@ -213,7 +218,20 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                         </div>
                         <div className="flex items-center gap-3 text-sm">
                             <User size={16} className="text-accent-teal" />
-                            <span className="font-medium text-surface-600">Rep: {lead.ownerId}</span>
+                            {isEditing && (user?.role === 'Admin' || user?.role === 'SalesManager' || user?.role === 'SuperAdmin') ? (
+                                <select
+                                    value={editData.ownerId || ''}
+                                    onChange={(e) => setEditData({ ...editData, ownerId: e.target.value })}
+                                    className="flex-1 px-3 py-2 border border-surface-200 rounded-xl text-sm focus:ring-2 focus:ring-accent-teal/30 focus:border-accent-teal outline-none transition-all"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {salesReps.map(rep => (
+                                        <option key={rep.id} value={rep.id}>{rep.name}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <span className="font-medium text-surface-600">Rep: {lead.ownerName || users.find(u => u.id === lead.ownerId)?.name || 'Unassigned'}</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -481,6 +499,17 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                         </div>
                     </div>
                 </div>
+
+                {lead.status === 'Delivered' && (() => {
+                    const deliveryActivity = activities?.find(a => a.title === 'Vehicle Delivered & Deal Closed');
+                    if (!deliveryActivity) return null;
+                    return (
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-left">
+                            <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-widest mb-2">Delivered Vehicle Details</h3>
+                            <p className="text-sm font-medium text-slate-800 leading-relaxed">{deliveryActivity.description}</p>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Actions Footer */}
@@ -512,14 +541,24 @@ const LeadDetailPanel: React.FC<LeadDetailPanelProps> = ({ lead, isOpen, onClose
                             <Button variant="secondary" onClick={handleEdit} icon={Edit2} className="flex-1">
                                 Edit Details
                             </Button>
-                             <Button
-                                onClick={handleConvert}
-                                variant="gradient"
-                                className="flex-1"
-                                isLoading={isSubmitting}
-                            >
-                                Convert to Deal
-                            </Button>
+                            {lead.status !== 'Delivered' && lead.status !== 'Dropout' && lead.status !== 'Cancelled' ? (
+                                 <Button
+                                    onClick={handleConvert}
+                                    variant="gradient"
+                                    className="flex-1"
+                                    isLoading={isSubmitting}
+                                >
+                                    Convert to Deal
+                                </Button>
+                            ) : lead.status === 'Delivered' ? (
+                                 <Button
+                                    disabled
+                                    variant="outline"
+                                    className="flex-1 border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed font-black"
+                                >
+                                    ✓ Delivered & Converted
+                                </Button>
+                            ) : null}
                         </>
                     )}
                 </div>

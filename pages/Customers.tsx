@@ -1,12 +1,24 @@
-
 import React, { useState, useMemo } from 'react';
-import { Search, MapPin, Phone, Mail, Car, X, Plus, ChevronRight, Users } from 'lucide-react';
-import { useCustomers, useCreateCustomer } from '../api';
+import { Search, MapPin, Phone, Mail, Car, X, Plus, Users, Wrench } from 'lucide-react';
+import { useCustomers, useCreateCustomer, useServiceJobs } from '../api';
 import { Customer } from '../types';
 import { Card, Button, Badge, SectionHeader, Input, Skeleton, useToast } from '../UI';
 
-const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void }> = ({ customer, onClose }) => {
+interface CustomerDrawerProps {
+   customer: Customer | null;
+   onClose: () => void;
+}
+
+const CustomerDrawer: React.FC<CustomerDrawerProps> = ({ customer, onClose }) => {
+   const { data: serviceJobs = [] } = useServiceJobs();
+
    if (!customer) return null;
+
+   // Filter jobs for this specific customer
+   const customerJobs = serviceJobs.filter(job => 
+      job.customerId === customer.id || 
+      (job.customerName && job.customerName.toLowerCase() === customer.name.toLowerCase())
+   );
 
    return (
       <div className="fixed inset-0 z-50 flex justify-end font-sans">
@@ -15,7 +27,7 @@ const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void 
          <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-slide-in-right overflow-y-auto border-l border-slate-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-start sticky top-0 bg-white z-10">
                <div className="flex gap-4 items-center">
-                  <div className="h-16 w-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-900/20">
+                  <div className="h-16 w-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-900/20">
                      {customer.name.charAt(0)}
                   </div>
                   <div>
@@ -34,7 +46,7 @@ const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void 
                <div className="grid grid-cols-3 gap-4">
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Lifetime Value</p>
-                     <p className="text-lg font-black text-slate-900">₹{(customer.ltv / 100000).toFixed(1)}L</p>
+                     <p className="text-lg font-black text-slate-900 font-mono">₹{(customer.ltv / 100000).toFixed(1)}L</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Referrals</p>
@@ -46,22 +58,30 @@ const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void 
                   </div>
                </div>
 
+               {/* Contact Identity */}
                <div className="space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Identity</h3>
                   <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
                      <div className="flex items-center gap-3">
                         <Phone size={18} className="text-slate-400" />
                         <span className="text-slate-700 font-bold">{customer.phone}</span>
-                        <Button size="sm" variant="outline" className="ml-auto">Call</Button>
+                        <a href={`tel:${customer.phone}`} className="ml-auto">
+                           <Button size="sm" variant="outline">Call</Button>
+                        </a>
                      </div>
                      <div className="flex items-center gap-3">
                         <Mail size={18} className="text-slate-400" />
-                        <span className="text-slate-700 font-bold">{customer.email}</span>
-                        <Button size="sm" variant="outline" className="ml-auto">Email</Button>
+                        <span className="text-slate-700 font-bold truncate">{customer.email || 'No email registered'}</span>
+                        {customer.email && (
+                           <a href={`mailto:${customer.email}`} className="ml-auto">
+                              <Button size="sm" variant="outline">Email</Button>
+                           </a>
+                        )}
                      </div>
                   </div>
                </div>
 
+               {/* Active Garage */}
                <div className="space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Garage</h3>
                   <div className="space-y-3">
@@ -73,13 +93,53 @@ const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void 
                      ) : customer.carsOwned.map((car, idx) => (
                         <div key={idx} className="flex justify-between items-center p-4 border border-slate-200 rounded-2xl bg-slate-50">
                            <div className="flex items-center gap-3">
-                              <Car size={20} className="text-blue-600" />
-                              <div>
+                              <Car size={20} className="text-indigo-600" />
+                              <div className="text-left">
                                  <p className="font-bold text-slate-800">{car.model}</p>
-                                 <p className="text-[10px] text-slate-500 font-black">{car.plate}</p>
+                                 <p className="text-[10px] text-slate-500 font-black">{car.plate || 'No Plate Registered'}</p>
                               </div>
                            </div>
                            <Badge variant={car.status === 'Active' ? 'success' : 'neutral'}>{car.status}</Badge>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Service History & Workshop Tracking */}
+               <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service History & Workshop</h3>
+                     {customer.nextServiceDueAt && (
+                        <Badge variant="blue" size="sm">
+                           Next Service: {customer.nextServiceDueAt}
+                        </Badge>
+                     )}
+                  </div>
+                  <div className="space-y-3">
+                     {customerJobs.length === 0 ? (
+                        <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                           <Wrench size={24} className="text-slate-300 mx-auto mb-2" />
+                           <p className="text-sm text-slate-500 font-medium">No service records found</p>
+                           <p className="text-[10px] text-slate-400 mt-1">Jobs will appear here once registered in the Workshop tab.</p>
+                        </div>
+                     ) : customerJobs.map((job, idx) => (
+                        <div key={idx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 transition-colors">
+                           <div className="text-left space-y-1">
+                              <div className="flex items-center gap-2">
+                                 <span className="font-mono text-xs font-black text-slate-800 uppercase">{job.id}</span>
+                                 <Badge variant={job.status === 'Ready' || job.status === 'Delivered' ? 'success' : job.status === 'In Progress' ? 'primary' : 'warning'} size="sm">
+                                    {job.status}
+                                 </Badge>
+                              </div>
+                              <p className="text-xs font-bold text-slate-700">{job.vehicleModel} • <span className="font-mono text-[10px] text-slate-500">{job.regNumber}</span></p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{job.type}</p>
+                           </div>
+                           <div className="text-left md:text-right shrink-0">
+                              <p className="text-xs font-black text-slate-900">NPR {job.actualCost ? job.actualCost.toLocaleString() : job.costEstimate.toLocaleString()}</p>
+                              <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                                 {job.status === 'Delivered' ? 'Delivered' : `Promised: ${new Date(job.promisedAt).toLocaleDateString()}`}
+                              </p>
+                           </div>
                         </div>
                      ))}
                   </div>
@@ -88,7 +148,6 @@ const CustomerDrawer: React.FC<{ customer: Customer | null; onClose: () => void 
 
             <div className="p-4 border-t border-slate-200 bg-slate-50 mt-auto flex justify-end gap-3">
                <Button variant="outline" onClick={onClose}>Close</Button>
-               <Button>Open Sale Card</Button>
             </div>
          </div>
       </div>
@@ -159,8 +218,7 @@ const Customers: React.FC = () => {
       return customers.filter(cust => {
          const matchesSearch = cust.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             cust.phone.includes(searchTerm);
-         if (!matchesSearch) return false;
-         return true;
+         return matchesSearch;
       });
    }, [searchTerm, customers]);
 
@@ -178,17 +236,19 @@ const Customers: React.FC = () => {
       <div className="space-y-8 animate-fade-in font-sans">
          <SectionHeader
             title="Customer CRM"
-            subtitle="Unified customer identity, lifetime value tracking, and retention."
-            actions={<Button icon={Plus} onClick={() => setIsAddModalOpen(true)}>Add Customer</Button>}
+            subtitle="Unified customer database, lifetime value tracking, and service history management."
          />
 
-         <AddCustomerModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center gap-2 mb-4">
+            <span className="text-sm">⚠️</span>
+            <span>Customer profiles can only be created inside the Pipeline / Vehicle Journey under the "Create Booking" flow to ensure complete linking and audit trail.</span>
+         </div>
          <div className="flex flex-wrap items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="relative flex-1 min-w-[300px]">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                <input
                   type="text"
-                  placeholder="Search customers (name, phone)..."
+                  placeholder="Search customers by name or phone..."
                   className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none font-bold bg-slate-50 border-none transition-all focus:bg-white focus:ring-blue-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -225,7 +285,7 @@ const Customers: React.FC = () => {
                            <td className="px-6 py-4">
                               <Badge size="sm" variant={cust.nextServiceDueAt ? 'blue' : 'neutral'}>{cust.nextServiceDueAt || 'Not Scheduled'}</Badge>
                            </td>
-                           <td className="px-6 py-4 text-center font-black text-slate-900">₹{(cust.ltv / 100000).toFixed(1)}L</td>
+                           <td className="px-6 py-4 text-center font-black text-slate-900 font-mono">₹{(cust.ltv / 100000).toFixed(1)}L</td>
                            <td className="px-6 py-4 text-right">
                               <Button size="sm" variant="ghost" onClick={() => setSelectedCustomer(cust)}>Profile</Button>
                            </td>
@@ -270,7 +330,10 @@ const Customers: React.FC = () => {
             ))}
          </div>
 
-         <CustomerDrawer customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} />
+         <CustomerDrawer 
+            customer={selectedCustomer ? customers.find(c => c.id === selectedCustomer.id) || selectedCustomer : null} 
+            onClose={() => setSelectedCustomer(null)} 
+         />
       </div>
    );
 };

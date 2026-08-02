@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { User, Settings as SettingsIcon, Share2, Plus, Globe, Bell, MessageSquare, Facebook, Smartphone, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Settings as SettingsIcon, Share2, Plus, Globe, Bell, MessageSquare, Facebook, Smartphone, Shield, FileText, Image as ImageIcon, Check } from 'lucide-react';
 import { Card, Button, Badge, SectionHeader, useToast } from '../UI';
 import { useUsers } from '../api';
 import { useAuth } from '../AuthContext';
 import { useAuthStore } from '../lib/store';
 import { updateOrganization } from '../lib/rbac';
-import { supabase } from '../lib/supabase';
 
 const IntegrationCard: React.FC<{ name: string; desc: string; icon: any; connected: boolean }> = ({ name, desc, icon: Icon, connected }) => (
    <div className="border border-slate-200 rounded-2xl p-5 flex flex-col justify-between h-full bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -31,7 +30,6 @@ const Settings: React.FC = () => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'general' | 'users' | 'integrations' | 'developer'>('general');
     const [currentUserRole, setCurrentUserRole] = useState<'Admin' | 'Sales'>(user?.role === 'Admin' || user?.role === 'SuperAdmin' ? 'Admin' : 'Sales');
-    const [useMockData, setUseMockData] = useState(localStorage.getItem('useMockData') === 'true');
     const { data: users = [] } = useUsers();
 
     // Dealership Profile States
@@ -40,7 +38,13 @@ const Settings: React.FC = () => {
     const [brandPhone, setBrandPhone] = useState(user?.orgPhone || '');
     const [brandAddress, setBrandAddress] = useState(user?.orgAddress || '');
     const [brandLogo, setBrandLogo] = useState(user?.orgLogo || '');
+    const [letterheadBg, setLetterheadBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+       const storedBg = localStorage.getItem('autosuite_letterhead_bg');
+       if (storedBg) setLetterheadBg(storedBg);
+    }, []);
 
     const handleSaveOrganization = async () => {
         if (!orgId) return;
@@ -55,8 +59,13 @@ const Settings: React.FC = () => {
             });
             
             if (res.error) throw new Error(res.error);
+
+            if (letterheadBg) {
+               localStorage.setItem('autosuite_letterhead_bg', letterheadBg);
+            } else {
+               localStorage.removeItem('autosuite_letterhead_bg');
+            }
             
-            // Update local store immediately for UI consistency
             if (user) {
                 setUser({
                     ...user,
@@ -68,7 +77,7 @@ const Settings: React.FC = () => {
                 });
             }
 
-            addToast('Dealership branding updated successfully!', 'success');
+            addToast('Dealership branding and letterhead template saved successfully!', 'success');
         } catch (err: any) {
             addToast(`Failed to update branding: ${err.message}`, 'error');
         } finally {
@@ -81,14 +90,6 @@ const Settings: React.FC = () => {
       { id: 'users', label: 'Users & Roles', icon: User },
       { id: 'integrations', label: 'Integrations', icon: Share2 },
    ];
-
-   const handleMockDataToggle = () => {
-      const newValue = !useMockData;
-      setUseMockData(newValue);
-      localStorage.setItem('useMockData', String(newValue));
-      // Force page reload to apply changes
-      window.location.reload();
-   };
 
    return (
       <div className="space-y-6">
@@ -114,8 +115,6 @@ const Settings: React.FC = () => {
                      })}
                   </nav>
                </Card>
-
-
             </div>
 
             {/* Content Area */}
@@ -124,7 +123,7 @@ const Settings: React.FC = () => {
                   <div className="space-y-6 animate-fade-in">
                      <Card>
                         <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-                           <h3 className="text-lg font-bold text-slate-900">Dealership Branding</h3>
+                           <h3 className="text-lg font-bold text-slate-900">Dealership Branding & Letterhead</h3>
                            <Badge variant={user?.role === 'Admin' || user?.role === 'SuperAdmin' ? 'success' : 'neutral'}>
                               {user?.role === 'Admin' || user?.role === 'SuperAdmin' ? 'Admin Access' : 'Read Only'}
                            </Badge>
@@ -138,10 +137,10 @@ const Settings: React.FC = () => {
                                  value={brandName} 
                                  onChange={(e) => setBrandName(e.target.value)}
                                  disabled={!(user?.role === 'Admin' || user?.role === 'SuperAdmin')}
-                                 placeholder="e.g. Lalitpur Auto Works"
+                                 placeholder="e.g. Apollo Motors Pvt. Ltd."
                                  className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white disabled:opacity-60" 
                               />
-                              <p className="text-[10px] text-slate-400 mt-1.5 font-medium italic">This name appears on all quotations and invoices.</p>
+                              <p className="text-[10px] text-slate-400 mt-1.5 font-medium italic">This name appears on all official documents, quotations, and invoices.</p>
                            </div>
                            <div>
                               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Primary Contact Email</label>
@@ -150,7 +149,7 @@ const Settings: React.FC = () => {
                                  value={brandEmail} 
                                  onChange={(e) => setBrandEmail(e.target.value)}
                                  disabled={!(user?.role === 'Admin' || user?.role === 'SuperAdmin')}
-                                 placeholder="sales@dealership.com"
+                                 placeholder="info.apollomotors@gmail.com"
                                  className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white disabled:opacity-60" 
                               />
                            </div>
@@ -161,7 +160,7 @@ const Settings: React.FC = () => {
                                  value={brandPhone} 
                                  onChange={(e) => setBrandPhone(e.target.value)}
                                  disabled={!(user?.role === 'Admin' || user?.role === 'SuperAdmin')}
-                                 placeholder="+977-XXXXXXXXXX"
+                                 placeholder="+977-1-4412066"
                                  className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white disabled:opacity-60" 
                               />
                            </div>
@@ -188,10 +187,80 @@ const Settings: React.FC = () => {
                                  value={brandAddress} 
                                  onChange={(e) => setBrandAddress(e.target.value)}
                                  disabled={!(user?.role === 'Admin' || user?.role === 'SuperAdmin')}
-                                 placeholder="Full address for header section"
+                                 placeholder="Maharajgunj-4, Kathmandu, Nepal"
                                  rows={2}
                                  className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white resize-none disabled:opacity-60" 
                               />
+                           </div>
+
+                           {/* Custom Letterhead Background Upload Section */}
+                           <div className="md:col-span-2 border-t border-slate-200 pt-6">
+                              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                                 <ImageIcon size={14} className="text-blue-600" /> Custom PDF / Image Letterhead Background Template
+                              </label>
+                              <p className="text-xs text-slate-500 mb-3 font-medium">
+                                 Upload your official company letterhead PDF or PNG/JPG image background. Document Vault will overlay GRN, Allotment Letters, and Invoices directly onto your exact letterhead template.
+                              </p>
+                              
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                 <input 
+                                    type="text" 
+                                    value={letterheadBg} 
+                                    onChange={(e) => {
+                                       setLetterheadBg(e.target.value);
+                                       localStorage.setItem('autosuite_letterhead_bg', e.target.value);
+                                    }}
+                                    placeholder="Enter Image/PDF URL or click Upload File"
+                                    className="flex-1 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white" 
+                                 />
+                                 <label className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer shrink-0 transition-colors">
+                                    <FileText size={16} />
+                                    <span>Upload Letterhead Image/PDF</span>
+                                    <input
+                                       type="file"
+                                       accept="image/*,.pdf"
+                                       className="hidden"
+                                       onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                             const reader = new FileReader();
+                                             reader.onload = (ev) => {
+                                                const result = ev.target?.result as string;
+                                                setLetterheadBg(result);
+                                                localStorage.setItem('autosuite_letterhead_bg', result);
+                                                addToast('Custom letterhead background template saved!', 'success');
+                                             };
+                                             reader.readAsDataURL(file);
+                                          }
+                                       }}
+                                    />
+                                 </label>
+                              </div>
+
+                              {letterheadBg && (
+                                 <div className="mt-4 flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+                                    <div className="flex items-center gap-4">
+                                       <img src={letterheadBg} alt="Letterhead Background Template" className="h-14 w-10 object-cover border border-blue-300 rounded shadow-sm bg-white" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                       <div>
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                                             <Check size={14} className="text-emerald-600" /> Custom Letterhead Template Active
+                                          </div>
+                                          <p className="text-[11px] text-blue-700 mt-0.5 font-medium">This background template will automatically be used in Document Vault print previews.</p>
+                                       </div>
+                                    </div>
+                                    <button
+                                       type="button"
+                                       onClick={() => {
+                                          setLetterheadBg('');
+                                          localStorage.removeItem('autosuite_letterhead_bg');
+                                          addToast('Custom letterhead template removed.', 'info');
+                                       }}
+                                       className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline border-none bg-transparent cursor-pointer px-2 py-1"
+                                    >
+                                       Remove Template
+                                    </button>
+                                 </div>
+                              )}
                            </div>
                         </div>
                         
@@ -208,80 +277,78 @@ const Settings: React.FC = () => {
                         )}
                      </Card>
                   </div>
-               )}
+                )}
 
+                {activeTab === 'users' && (
+                   <div className="space-y-6 animate-fade-in">
+                      <div className="flex justify-between items-center">
+                         <div>
+                            <h3 className="text-lg font-bold text-slate-900">Team Members</h3>
+                            <p className="text-sm text-slate-500 font-medium">Manage workshop and showroom access.</p>
+                         </div>
+                         {currentUserRole === 'Admin' && (
+                            <Button icon={Plus} onClick={() => window.location.href = '/users'} size="sm">
+                               Add User
+                            </Button>
+                         )}
+                      </div>
+                      <Card noPadding>
+                         <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                               <tr>
+                                  <th className="px-6 py-4">Name</th>
+                                  <th className="px-6 py-4">Role</th>
+                                  <th className="px-6 py-4">Status</th>
+                                  {currentUserRole === 'Admin' && <th className="px-6 py-4">Actions</th>}
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                               {users.map(user => (
+                                  <tr key={user.id} className="hover:bg-slate-50/50">
+                                     <td className="px-6 py-4">
+                                        <div className="font-bold text-slate-900">{user.name}</div>
+                                        <div className="text-xs text-slate-500 font-medium">{user.email}</div>
+                                     </td>
+                                     <td className="px-6 py-4"><Badge variant="blue">{user.role}</Badge></td>
+                                     <td className="px-6 py-4">
+                                        <Badge variant={user.status === 'Active' ? 'success' : 'neutral'}>{user.status}</Badge>
+                                     </td>
+                                     {currentUserRole === 'Admin' && (
+                                        <td className="px-6 py-4">
+                                           <button className="text-slate-400 hover:text-blue-600 font-bold text-[10px] uppercase tracking-wider mr-4">Edit</button>
+                                           <button className="text-slate-400 hover:text-red-600 font-bold text-[10px] uppercase tracking-wider">Remove</button>
+                                        </td>
+                                     )}
+                                  </tr>
+                               ))}
+                            </tbody>
+                         </table>
+                      </Card>
+                   </div>
+                )}
 
-
-               {activeTab === 'users' && (
-                  <div className="space-y-6 animate-fade-in">
-                     <div className="flex justify-between items-center">
-                        <div>
-                           <h3 className="text-lg font-bold text-slate-900">Team Members</h3>
-                           <p className="text-sm text-slate-500 font-medium">Manage workshop and showroom access.</p>
-                        </div>
-                        {currentUserRole === 'Admin' && (
-                           <Button icon={Plus} onClick={() => window.location.href = '/users'} size="sm">
-                              Add User
-                           </Button>
-                        )}
-                     </div>
-                     <Card noPadding>
-                        <table className="w-full text-sm text-left">
-                           <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200">
-                              <tr>
-                                 <th className="px-6 py-4">Name</th>
-                                 <th className="px-6 py-4">Role</th>
-                                 <th className="px-6 py-4">Status</th>
-                                 {currentUserRole === 'Admin' && <th className="px-6 py-4">Actions</th>}
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-100">
-                              {users.map(user => (
-                                 <tr key={user.id} className="hover:bg-slate-50/50">
-                                    <td className="px-6 py-4">
-                                       <div className="font-bold text-slate-900">{user.name}</div>
-                                       <div className="text-xs text-slate-500 font-medium">{user.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4"><Badge variant="blue">{user.role}</Badge></td>
-                                    <td className="px-6 py-4">
-                                       <Badge variant={user.status === 'Active' ? 'success' : 'neutral'}>{user.status}</Badge>
-                                    </td>
-                                    {currentUserRole === 'Admin' && (
-                                       <td className="px-6 py-4">
-                                          <button className="text-slate-400 hover:text-blue-600 font-bold text-[10px] uppercase tracking-wider mr-4">Edit</button>
-                                          <button className="text-slate-400 hover:text-red-600 font-bold text-[10px] uppercase tracking-wider">Remove</button>
-                                       </td>
-                                    )}
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                     </Card>
-                  </div>
-               )}
-
-               {activeTab === 'integrations' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                     <IntegrationCard
-                        name="WhatsApp Business"
-                        desc="Automated follow-ups and lead response engine via Meta Cloud API."
-                        icon={MessageSquare}
-                        connected={true}
-                     />
-                     <IntegrationCard
-                        name="Meta Ads Manager"
-                        desc="Direct ingestion of Facebook Lead Gen forms into Sales Pipeline."
-                        icon={Facebook}
-                        connected={true}
-                     />
-                     <IntegrationCard
-                        name="Google Search Console"
-                        desc="Conversion tracking for showroom website traffic."
-                        icon={Globe}
-                        connected={false}
-                     />
-                  </div>
-               )}
+                {activeTab === 'integrations' && (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                      <IntegrationCard
+                         name="WhatsApp Business"
+                         desc="Automated follow-ups and lead response engine via Meta Cloud API."
+                         icon={MessageSquare}
+                         connected={true}
+                      />
+                      <IntegrationCard
+                         name="Meta Ads Manager"
+                         desc="Direct ingestion of Facebook Lead Gen forms into Sales Pipeline."
+                         icon={Facebook}
+                         connected={true}
+                      />
+                      <IntegrationCard
+                         name="Google Search Console"
+                         desc="Conversion tracking for showroom website traffic."
+                         icon={Globe}
+                         connected={false}
+                      />
+                   </div>
+                )}
             </div>
          </div>
       </div>

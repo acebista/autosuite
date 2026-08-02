@@ -3,7 +3,8 @@ import { useDashboardExceptions, useLeads, useInvoices, useServiceJobs, useInven
 import { PageHeader, Card, Badge, Skeleton, Button, ActionItem, AIInsightBox, MetricCard } from '../UI';
 import {
   AlertCircle, Clock, TrendingUp, Car, Users,
-  ArrowRight, ShieldAlert, BarChart3, Wrench, MessageCircle, Sparkles, Target, Trophy, Zap
+  ArrowRight, ShieldAlert, BarChart3, Wrench, MessageCircle, Sparkles, Target, Trophy, Zap,
+  Package
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -55,8 +56,9 @@ const Dashboard: React.FC = () => {
     const leadROI = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0';
 
     // Stock turns
-    const soldVehicles = vehicles.filter(v => v.status === 'Sold').length;
-    const totalVehicles = vehicles.length;
+    const actualVehicles = vehicles.filter(v => v.vin && !v.vin.startsWith('CAT-'));
+    const soldVehicles = actualVehicles.filter(v => v.status === 'Sold').length;
+    const totalVehicles = actualVehicles.length;
     const stockTurns = totalVehicles > 0 ? (soldVehicles / totalVehicles).toFixed(1) : '0.0';
 
     // Personal performance (for current user)
@@ -218,6 +220,39 @@ const Dashboard: React.FC = () => {
                 />
               </Link>
             </div>
+          </section>
+
+          {/* Working Capital & LC Aging Monitor */}
+          <section>
+            <Card className="border border-surface-200">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                  <Package size={18} className="text-accent-teal" />
+                  <h3 className="font-display text-lg font-semibold text-surface-900">Working Capital LC Health</h3>
+                </div>
+                <Badge variant="warning">85-95d cycle limit</Badge>
+              </div>
+              <p className="text-xs text-surface-500 mb-4">
+                Live monitoring of Domestic Letters of Credit (LC) opening times to check capital exposure risk.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-surface-50 p-4 rounded-xl border border-surface-150">
+                  <span className="text-[10px] uppercase font-semibold text-surface-400 tracking-wider">Breaching / High Risk LCs</span>
+                  <span className="block font-display text-2xl font-bold text-red-500 mt-1">
+                    {vehicles.filter(v => {
+                      const days = Math.floor((Date.now() - new Date(v.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+                      return v.vehicleState === 'LC_OPENED' && days > 95;
+                    }).length} Units
+                  </span>
+                </div>
+                <div className="bg-surface-50 p-4 rounded-xl border border-surface-150">
+                  <span className="text-[10px] uppercase font-semibold text-surface-400 tracking-wider">Awaiting Shipping Info</span>
+                  <span className="block font-display text-2xl font-bold text-orange-500 mt-1">
+                    {vehicles.filter(v => v.vehicleState === 'PO_ISSUED').length} Units
+                  </span>
+                </div>
+              </div>
+            </Card>
           </section>
 
           {/* AI Revenue Predictor */}
