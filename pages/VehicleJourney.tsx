@@ -144,6 +144,7 @@ export const VehicleJourney: React.FC = () => {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [detailTab, setDetailTab] = useState<'actions' | 'timeline'>('actions');
+  const [viewMode, setViewMode] = useState<'board' | 'tracker'>('tracker');
   const [collapsedStates, setCollapsedStates] = useState<Record<string, boolean>>({
     DELIVERED: false,
     INSURANCE_ACTIVATION: false,
@@ -1117,7 +1118,31 @@ export const VehicleJourney: React.FC = () => {
         title="Vehicle Journey Command Center"
         subtitle="Unified visual pipeline tracing the dealership capital flow from PO through to final bank disbursement"
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View Mode Segment Switcher */}
+            <div className="flex items-center bg-surface-100 p-1 rounded-xl border border-surface-200/60 shrink-0">
+              <button
+                onClick={() => setViewMode('tracker')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'tracker'
+                    ? 'bg-white text-deepal-600 shadow-sm border border-surface-200/10'
+                    : 'text-surface-500 hover:text-surface-850'
+                }`}
+              >
+                🗺️ Live Tracker
+              </button>
+              <button
+                onClick={() => setViewMode('board')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'board'
+                    ? 'bg-white text-deepal-600 shadow-sm border border-surface-200/10'
+                    : 'text-surface-500 hover:text-surface-850'
+                }`}
+              >
+                📋 Pipeline Board
+              </button>
+            </div>
+
             <div className="relative group">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 group-focus-within:text-accent-teal transition-colors" size={16} />
               <input
@@ -1125,7 +1150,7 @@ export const VehicleJourney: React.FC = () => {
                 placeholder="Search VIN, Model, Customer..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-md border border-surface-200 rounded-xl text-xs font-semibold text-surface-900 focus-ring w-64 hover:border-surface-300 transition-all"
+                className="pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-md border border-surface-200 rounded-xl text-xs font-semibold text-surface-900 focus-ring w-52 hover:border-surface-300 transition-all"
               />
             </div>
             <select
@@ -1192,6 +1217,170 @@ export const VehicleJourney: React.FC = () => {
               <Skeleton className="h-40 w-full" />
             </div>
           ))}
+        </div>
+      ) : viewMode === 'tracker' ? (
+        /* ─── Premium Live Tracker Layout ─── */
+        <div className="space-y-4">
+          {filteredCards.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-16 text-center bg-white/80 border border-surface-200 rounded-[32px] shadow-sm">
+              <span className="text-3xl mb-3">🚙</span>
+              <h3 className="font-display text-lg font-bold text-surface-900">No Vehicles Found</h3>
+              <p className="text-xs text-surface-500 mt-1 max-w-sm">No vehicles match your active search terms or filters.</p>
+            </div>
+          ) : (
+            filteredCards.map((card) => {
+              const progress = STATE_METADATA[card.state]?.progress || 0;
+              const meta = STATE_METADATA[card.state] || { label: card.state, color: 'neutral' };
+
+              // Alert check (SLA monitoring)
+              let isBreaching = false;
+              let breachMsg = '';
+              if (card.rawVehicle?.createdAt) {
+                const days = Math.floor((Date.now() - new Date(card.rawVehicle.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                if (card.state === 'LC_OPENED' && days > 95) {
+                  isBreaching = true;
+                  breachMsg = `${days}d Open LC`;
+                } else if (card.state === 'IN_STOCK' && days > 60) {
+                  isBreaching = true;
+                  breachMsg = `${days}d Aging Stock`;
+                }
+              }
+
+              // Define the 10 milestones
+              const trackerMilestones = [
+                { key: 'PO_ISSUED', label: 'Order', activeStates: ['PO_ISSUED'], completedStates: ['LC_OPENED', 'IN_TRANSIT', 'RECEIVED', 'IN_STOCK', 'BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'LC_OPENED', label: 'LC', activeStates: ['LC_OPENED'], completedStates: ['IN_TRANSIT', 'RECEIVED', 'IN_STOCK', 'BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'IN_TRANSIT', label: 'Transit', activeStates: ['IN_TRANSIT'], completedStates: ['RECEIVED', 'IN_STOCK', 'BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'RECEIVED', label: 'Yard', activeStates: ['RECEIVED'], completedStates: ['IN_STOCK', 'BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'IN_STOCK', label: 'Stock', activeStates: ['IN_STOCK'], completedStates: ['BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'BOOKED', label: 'Booked', activeStates: ['BOOKED', 'ALLOCATED'], completedStates: ['PAYMENT_STRUCTURED', 'BANK_ALLOTMENT', 'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'PAYMENT_STRUCTURED', label: 'DO & Deposit', activeStates: ['PAYMENT_STRUCTURED', 'BANK_ALLOTMENT'], completedStates: ['READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'READY_FOR_DELIVERY', label: 'PDI Prep', activeStates: ['READY_FOR_DELIVERY'], completedStates: ['DELIVERED', 'INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'DELIVERED', label: 'Delivered', activeStates: ['DELIVERED'], completedStates: ['INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'] },
+                { key: 'BANK_DISBURSEMENT', label: 'Settlement', activeStates: ['INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'], completedStates: [] }
+              ];
+
+              return (
+                <div
+                  key={`${card.entityType}-${card.id}`}
+                  className="flex flex-col lg:flex-row lg:items-center bg-white/90 backdrop-blur-md border border-surface-200/85 shadow-sm rounded-[24px] p-5 gap-6 hover:shadow-md hover:border-accent-teal/40 hover:bg-white transition-all duration-300 relative overflow-hidden group"
+                >
+                  {isBreaching && (
+                    <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-red-500" />
+                  )}
+
+                  {/* Left Side: Vehicle Identity */}
+                  <div className="flex items-center gap-4 lg:w-72 shrink-0 lg:border-r border-surface-150 pr-4">
+                    <div className="h-16 w-24 rounded-xl overflow-hidden bg-gradient-to-b from-surface-50 to-surface-100/50 border border-surface-200/60 flex-shrink-0 flex items-center justify-center relative">
+                      {card.image ? (
+                        <img src={card.image} alt={card.model} className="object-contain max-h-[85%] max-w-[85%] group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <span className="text-xl">🚗</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-xs text-surface-900 truncate max-w-[120px] leading-tight">
+                          {card.model}
+                        </h4>
+                        <Badge variant={meta.color as any} size="sm">{meta.label}</Badge>
+                      </div>
+                      <p className="text-[9px] text-surface-500 font-semibold font-mono tracking-wider mt-1.5 flex items-center gap-1">
+                        <span className="opacity-60">Chassis:</span>
+                        <span className="text-surface-700 bg-surface-100 px-1 py-0.5 rounded text-[8px] truncate max-w-[110px]">{card.vin || 'Pending'}</span>
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {card.customerName && (
+                          <div className="flex items-center gap-1 text-[8px] font-extrabold text-deepal-600 bg-deepal-50/50 py-0.5 px-1.5 rounded-md border border-deepal-100">
+                            <User size={8} className="text-deepal-500 shrink-0" />
+                            <span className="truncate max-w-[90px]">{card.customerName}</span>
+                          </div>
+                        )}
+                        {card.color && (
+                          <span className="text-[9px] text-surface-400 font-semibold flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: card.color.toLowerCase() }} />
+                            <span>{card.color}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Center: Horizontal Node Progress Line */}
+                  <div className="flex-1 flex items-center justify-between px-2 md:px-4 relative py-3 overflow-x-auto min-w-[450px]">
+                    {trackerMilestones.map((milestone, idx) => {
+                      const activeIndex = trackerMilestones.findIndex(m => m.activeStates.includes(card.state));
+                      const isCompleted = milestone.completedStates.includes(card.state) || (activeIndex !== -1 && idx < activeIndex);
+                      const isActive = milestone.activeStates.includes(card.state) || (milestone.key === 'BANK_DISBURSEMENT' && ['INSURANCE_ACTIVATION', 'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'].includes(card.state));
+                      const isPending = !isCompleted && !isActive;
+
+                      const dotBg = isCompleted
+                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                        : isActive
+                          ? 'bg-accent-teal border-accent-teal ring-4 ring-accent-teal/20 text-white scale-110'
+                          : 'bg-white border-surface-300 text-surface-400';
+
+                      return (
+                        <div key={milestone.key} className="flex-1 flex items-center relative">
+                          {/* Stepper connecting line */}
+                          {idx < trackerMilestones.length - 1 && (
+                            <div className="absolute left-[18px] right-0 top-1/2 -translate-y-1/2 h-[3px] pointer-events-none -z-10 bg-surface-150">
+                              <div
+                                className={`h-full transition-all duration-500 ${
+                                  isCompleted ? 'bg-emerald-500' : isActive ? 'bg-gradient-to-r from-accent-teal to-surface-150' : 'bg-transparent'
+                                }`}
+                                style={{ width: isCompleted ? '100%' : '0%' }}
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex flex-col items-center relative z-10 mx-auto group/node">
+                            <div
+                              className={`h-5 w-5 rounded-full border transition-all flex items-center justify-center text-[8px] font-bold select-none cursor-help ${dotBg}`}
+                              title={`${milestone.label}: ${isActive ? 'Active' : isCompleted ? 'Completed' : 'Pending'}`}
+                            >
+                              {isCompleted ? '✓' : idx + 1}
+                            </div>
+                            <span
+                              className={`text-[8px] font-bold uppercase tracking-wider mt-2 transition-all text-center max-w-[55px] ${
+                                isActive ? 'text-accent-teal font-extrabold' : isCompleted ? 'text-surface-650 font-semibold' : 'text-surface-400'
+                              }`}
+                            >
+                              {milestone.label}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right Side: Price & Open Action Button */}
+                  <div className="flex items-center justify-end pl-4 shrink-0 gap-3 border-t lg:border-t-0 border-surface-100 pt-3 lg:pt-0">
+                    {isBreaching && (
+                      <div className="flex items-center gap-1 text-red-600 font-bold text-[9px] uppercase tracking-wider animate-pulse mr-2 bg-red-50/70 px-2 py-1 rounded-lg border border-red-150">
+                        <AlertTriangle size={10} />
+                        <span>{breachMsg}</span>
+                      </div>
+                    )}
+                    
+                    <div className="text-right">
+                      <span className="text-[8px] text-surface-400 font-bold uppercase block leading-none">RETAIL VALUE</span>
+                      <span className="text-xs font-bold text-surface-900 block mt-0.5">NPR {card.price ? (card.price / 100000).toFixed(1) + ' L' : 'TBD'}</span>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="hover:border-accent-teal/50 hover:bg-accent-teal hover:text-white transition-all text-xs font-bold rounded-xl"
+                      onClick={() => handleOpenDrawer(card)}
+                    >
+                      Inspect
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       ) : (
         /* Adjust column grid to Cols-4 to perfectly occupy 100% width since we have 4 columns */
