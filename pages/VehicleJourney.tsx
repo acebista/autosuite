@@ -14,6 +14,8 @@ import {
   useCreateCustomer,
   useCreateSaleRecord,
   useCustomers,
+  useLeads,
+  useUpdateLead,
   supabase
 } from '../api';
 import { PageHeader, Card, Badge, Button, MetricCard, Skeleton, Input, Select, Modal } from '../UI';
@@ -113,6 +115,7 @@ export const VehicleJourney: React.FC = () => {
   const { data: deals = [], isLoading: isDealsLoading, refetch: refetchDeals } = useSaleRecords();
   const { data: pis = [], isLoading: isPIsLoading, refetch: refetchPis } = useProformaInvoices();
   const { data: customers = [], refetch: refetchCustomers } = useCustomers();
+  const { data: leads = [], refetch: refetchLeads } = useLeads();
 
   // Derived activeCatalog (including custom database catalog templates)
   const activeCatalog = useMemo(() => {
@@ -128,6 +131,7 @@ export const VehicleJourney: React.FC = () => {
   const createLCMutation = useCreateLC();
   const createCustomerMutation = useCreateCustomer();
   const createSaleMutation = useCreateSaleRecord();
+  const updateLeadMutation = useUpdateLead();
 
   // Local UI States
   const [selectedItem, setSelectedItem] = useState<any>(null); // Holds selected vehicle or sale record details
@@ -983,10 +987,52 @@ export const VehicleJourney: React.FC = () => {
   const handleCreateBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let customerId = existCustId;
+      let customerId = '';
+
+      if (!existCustId) {
+        alert('Please select a customer or lead.');
+        return;
+      }
+
+      if (existCustId.startsWith('CUST-')) {
+        customerId = existCustId.replace('CUST-', '');
+      } else if (existCustId.startsWith('LEAD-')) {
+        const leadId = existCustId.replace('LEAD-', '');
+        const lead = leads.find(l => l.id === leadId);
+        if (!lead) {
+          alert('Selected lead not found.');
+          return;
+        }
+
+        // Automatically create a customer record from the lead's information
+        const newCust = await createCustomerMutation.mutateAsync({
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email || null,
+          address: lead.address || null,
+          companyName: lead.companyName || null,
+          panNumber: lead.panNumber || null,
+          orgId: lead.orgId || undefined,
+        } as any);
+        
+        customerId = newCust.id;
+
+        // Update the lead status to Booked
+        try {
+          await updateLeadMutation.mutateAsync({
+            id: lead.id,
+            patch: { status: 'Booked' }
+          });
+        } catch (leadUpdateErr) {
+          console.warn('Failed to update lead status during booking conversion:', leadUpdateErr);
+        }
+      } else {
+        // Fallback for direct IDs
+        customerId = existCustId;
+      }
 
       if (!customerId) {
-        alert('Please select a customer.');
+        alert('Failed to resolve customer ID.');
         return;
       }
 
@@ -1005,7 +1051,7 @@ export const VehicleJourney: React.FC = () => {
         entityType: 'SALE',
         fromState: 'BOOKED',
         toState: 'BOOKED',
-        notes: `New booking logged for customer interest in ${bookModel} (${bookColor}). Final Price: ₹${Number(bookPrice).toLocaleString()}`
+        notes: `New booking logged for customer interest in ${bookModel} (${bookColor}). Final Price: NPR ${Number(bookPrice).toLocaleString()}`
       });
 
       // Update vehicle model interest inside sale_record if applicable, else notes log represents it
@@ -1025,6 +1071,8 @@ export const VehicleJourney: React.FC = () => {
     refetchVehicles();
     refetchDeals();
     refetchPis();
+    refetchCustomers();
+    refetchLeads();
   };
 
   const triggerEmailNotify = (subject: string, body: string) => {
@@ -3041,10 +3089,17 @@ export const VehicleJourney: React.FC = () => {
               onChange={e => setExistCustId(e.target.value)}
               className="w-full bg-white border border-surface-200 rounded-xl px-4 py-3.5 text-sm focus-ring text-surface-900 cursor-pointer"
             >
-              <option value="">Select CRM Contact...</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-              ))}
+              <option value="">Select CRM Customer or Pipeline Lead...</option>
+              <optgroup label="CRM Customers">
+                {customers.map(c => (
+                  <option key={`CUST-${c.id}`} value={`CUST-${c.id}`}>{c.name} ({c.phone})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Pipeline Leads (Unbooked)">
+                {leads.filter(l => l.status !== 'Booked' && l.status !== 'Delivered').map(l => (
+                  <option key={`LEAD-${l.id}`} value={`LEAD-${l.id}`}>{l.name} ({l.phone}) - {l.modelInterest || 'General Interest'}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
