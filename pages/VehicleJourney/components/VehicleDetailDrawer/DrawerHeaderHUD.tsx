@@ -9,35 +9,6 @@ interface HealthHUDBarProps {
   onClose: () => void;
 }
 
-// Compact SVG progress ring
-const HealthRing: React.FC<{ score: number; color: 'green' | 'yellow' | 'red' }> = ({ score, color }) => {
-  const r = 20;
-  const circ = 2 * Math.PI * r; // ≈ 125.7
-  const offset = circ - (score / 100) * circ;
-  const stroke = color === 'green' ? '#34d399' : color === 'yellow' ? '#fbbf24' : '#f87171';
-
-  return (
-    <svg width="52" height="52" viewBox="0 0 52 52" className="flex-shrink-0">
-      {/* Track */}
-      <circle cx="26" cy="26" r={r} fill="none" strokeWidth="3.5" stroke="rgba(255,255,255,0.08)" />
-      {/* Progress */}
-      <circle
-        cx="26" cy="26" r={r}
-        fill="none" strokeWidth="3.5" stroke={stroke}
-        strokeDasharray={`${circ}`}
-        strokeDashoffset={`${offset}`}
-        strokeLinecap="round"
-        transform="rotate(-90 26 26)"
-        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
-      />
-      <text x="26" y="31" textAnchor="middle" fontSize="11" fontWeight="700" fill="white">
-        {score}%
-      </text>
-    </svg>
-  );
-};
-
-// Derives a CSS-compatible background for the vehicle's color name
 const COLOR_MAP: Record<string, string> = {
   'arctic white': '#EFF4F8', 'pearl white': '#F5F5F0', 'white': '#F9FAFB',
   'midnight black': '#0F172A', 'black': '#111827',
@@ -54,50 +25,118 @@ function resolveColor(colorName: string): string {
   return COLOR_MAP[key] || Object.entries(COLOR_MAP).find(([k]) => key.includes(k))?.[1] || '#6B7280';
 }
 
-const HEALTH_BADGE: Record<'green' | 'yellow' | 'red', string> = {
-  green: 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30',
-  yellow: 'bg-amber-400/20 text-amber-300 border-amber-400/30 animate-pulse',
-  red: 'bg-red-400/20 text-red-300 border-red-400/30 animate-pulse',
+const HEALTH_BADGE: Record<'green' | 'yellow' | 'red', { bg: string; label: string }> = {
+  green:  { bg: 'bg-emerald-500', label: 'On Track' },
+  yellow: { bg: 'bg-amber-400',   label: 'SLA Risk'  },
+  red:    { bg: 'bg-red-500',     label: 'Breached'  },
 };
 
-const HEALTH_LABEL: Record<'green' | 'yellow' | 'red', string> = {
-  green: '✦ On Track',
-  yellow: '⚡ SLA Risk',
-  red: '🔥 Breached',
+// Desktop-only SVG ring
+const HealthRing: React.FC<{ score: number; color: 'green' | 'yellow' | 'red' }> = ({ score, color }) => {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const stroke = color === 'green' ? '#34d399' : color === 'yellow' ? '#fbbf24' : '#f87171';
+  return (
+    <svg width="46" height="46" viewBox="0 0 46 46" className="flex-shrink-0 hidden lg:block">
+      <circle cx="23" cy="23" r={r} fill="none" strokeWidth="3" stroke="rgba(255,255,255,0.08)" />
+      <circle cx="23" cy="23" r={r} fill="none" strokeWidth="3" stroke={stroke}
+        strokeDasharray={`${circ}`} strokeDashoffset={`${offset}`}
+        strokeLinecap="round" transform="rotate(-90 23 23)"
+        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+      />
+      <text x="23" y="27" textAnchor="middle" fontSize="9" fontWeight="700" fill="white">{score}%</text>
+    </svg>
+  );
 };
 
 export const HealthHUDBar: React.FC<HealthHUDBarProps> = ({ selectedItem, bottleneck, onClose }) => {
   const vehicleColor = resolveColor(selectedItem.color || '');
-  const meta = STATE_METADATA[selectedItem.state as keyof typeof STATE_METADATA];
+  const badge = HEALTH_BADGE[bottleneck.healthColor];
 
   return (
     <div className="flex-shrink-0 bg-gradient-to-r from-surface-950 via-deepal-950 to-surface-950 border-b border-white/5">
-      <div className="flex items-center gap-4 px-5 py-3.5">
 
-        {/* LEFT: Vehicle identity */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          {/* Color swatch + model thumbnail */}
-          <div className="flex-shrink-0 relative">
-            {selectedItem.image ? (
-              <img
-                src={selectedItem.image}
-                alt={selectedItem.model}
-                className="w-14 h-10 object-cover rounded-xl border border-white/10"
-              />
-            ) : (
-              <div
-                className="w-14 h-10 rounded-xl border border-white/10 shadow-inner"
-                style={{ backgroundColor: vehicleColor }}
-              />
-            )}
-            {/* Color dot */}
-            <div
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface-950 shadow"
-              style={{ backgroundColor: vehicleColor }}
-              title={selectedItem.color}
-            />
+      {/* ── MOBILE layout ─────────────────────────────────────────────── */}
+      <div className="lg:hidden">
+        {/* Row 1: close left, model center, badge right */}
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white/60 active:bg-white/20 flex-shrink-0"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-white text-base leading-tight truncate font-display">
+              {selectedItem.model}
+              {selectedItem.variant && (
+                <span className="font-normal text-white/40 ml-1.5 text-sm">{selectedItem.variant}</span>
+              )}
+            </p>
+            <p className="text-[11px] text-white/40 truncate mt-0.5">
+              {selectedItem.color}{selectedItem.color && selectedItem.vin ? ' · ' : ''}
+              {selectedItem.vin ? `VIN …${selectedItem.vin.slice(-8)}` : ''}
+            </p>
           </div>
 
+          {/* Color swatch */}
+          <div
+            className="w-8 h-8 rounded-xl border-2 border-white/20 flex-shrink-0 shadow-inner"
+            style={{ backgroundColor: vehicleColor }}
+          />
+        </div>
+
+        {/* Row 2: progress bar + status */}
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className={`inline-block w-2 h-2 rounded-full ${badge.bg}`} />
+              <span className="text-[11px] font-bold text-white/70 uppercase tracking-wide">{badge.label}</span>
+            </div>
+            {selectedItem.customerName && (
+              <span className="text-[11px] text-white/50 flex items-center gap-1 truncate max-w-[160px]">
+                <User size={10} className="text-white/30 flex-shrink-0" />
+                {selectedItem.customerName}
+                {selectedItem.price && (
+                  <span className="font-bold text-white/70 ml-1">
+                    NPR {(selectedItem.price / 1e5).toFixed(1)}L
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          {/* Progress bar */}
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${bottleneck.healthScore}%`,
+                backgroundColor: badge.bg.replace('bg-', '') === 'emerald-500' ? '#10b981'
+                  : badge.bg.includes('amber') ? '#f59e0b' : '#ef4444',
+              }}
+            />
+          </div>
+          <p className="text-[10px] text-white/35 mt-1 truncate">{bottleneck.awaitingText}</p>
+        </div>
+      </div>
+
+      {/* ── DESKTOP layout (unchanged) ────────────────────────────────── */}
+      <div className="hidden lg:flex items-center gap-4 px-5 py-3.5">
+        {/* LEFT: Vehicle identity */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex-shrink-0 relative">
+            {selectedItem.image ? (
+              <img src={selectedItem.image} alt={selectedItem.model}
+                className="w-14 h-10 object-cover rounded-xl border border-white/10" />
+            ) : (
+              <div className="w-14 h-10 rounded-xl border border-white/10 shadow-inner"
+                style={{ backgroundColor: vehicleColor }} />
+            )}
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface-950 shadow"
+              style={{ backgroundColor: vehicleColor }} title={selectedItem.color} />
+          </div>
           <div className="min-w-0">
             <p className="font-bold text-white font-display text-base leading-tight truncate">
               {selectedItem.model}
@@ -120,16 +159,14 @@ export const HealthHUDBar: React.FC<HealthHUDBarProps> = ({ selectedItem, bottle
         <div className="flex items-center gap-3 flex-shrink-0">
           <HealthRing score={bottleneck.healthScore} color={bottleneck.healthColor} />
           <div>
-            <div className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${HEALTH_BADGE[bottleneck.healthColor]}`}>
-              {HEALTH_LABEL[bottleneck.healthColor]}
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${badge.bg}`}>
+              {badge.label}
             </div>
-            <p className="text-[11px] text-white/50 mt-1 max-w-[180px] leading-tight">
-              {bottleneck.awaitingText}
-            </p>
+            <p className="text-[11px] text-white/50 mt-1 max-w-[180px] leading-tight">{bottleneck.awaitingText}</p>
           </div>
         </div>
 
-        {/* RIGHT: Customer + price + live + close */}
+        {/* RIGHT: Customer + price + close */}
         <div className="flex items-center gap-4 flex-shrink-0 ml-auto">
           <div className="text-right">
             {selectedItem.customerName && (
@@ -142,11 +179,10 @@ export const HealthHUDBar: React.FC<HealthHUDBarProps> = ({ selectedItem, bottle
             )}
             {selectedItem.price && (
               <p className="text-sm font-bold text-white mt-0.5 font-display">
-                NPR {((selectedItem.price) / 1e5).toFixed(1)}L
+                NPR {(selectedItem.price / 1e5).toFixed(1)}L
               </p>
             )}
           </div>
-
           {/* Live pulse */}
           <div className="flex flex-col items-center gap-1">
             <div className="relative flex h-2.5 w-2.5">
@@ -155,7 +191,6 @@ export const HealthHUDBar: React.FC<HealthHUDBarProps> = ({ selectedItem, bottle
             </div>
             <span className="text-[8px] font-bold text-emerald-400/70 uppercase tracking-wider">Live</span>
           </div>
-
           {/* Close */}
           <button
             onClick={onClose}

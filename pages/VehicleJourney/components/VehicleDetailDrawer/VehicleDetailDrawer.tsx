@@ -57,11 +57,11 @@ export const VehicleDetailDrawer: React.FC<VehicleDetailDrawerProps> = ({
           onClose={onClose}
         />
 
-        {/* ── Main Content: stacked on mobile, 65/35 split on desktop ── */}
-        <div className="flex flex-col lg:flex-row flex-1 gap-0 overflow-hidden">
+        {/* ── Main Content: full scroll on mobile, 65/35 side-by-side on desktop ── */}
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0">
 
-          {/* Action Panel — full width on mobile, 65% on desktop */}
-          <div className="flex-1 lg:flex-[65] min-w-0 overflow-y-auto px-4 py-4 lg:px-5 lg:py-5 border-b lg:border-b-0 lg:border-r border-surface-200 bg-surface-50">
+          {/* Action Panel — scrolls on mobile, 65% + scrollable on desktop */}
+          <div className="flex-1 lg:flex-[65] overflow-y-auto px-4 py-4 lg:px-5 lg:py-5 lg:border-r border-surface-200 bg-surface-50">
             <LeftActionPanel
               selectedItem={selectedItem}
               bottleneck={bottleneck}
@@ -72,7 +72,7 @@ export const VehicleDetailDrawer: React.FC<VehicleDetailDrawerProps> = ({
             />
           </div>
 
-          {/* Journey Map — hidden on mobile by default, visible on desktop */}
+          {/* Journey Map — hidden on mobile, scrollable on desktop */}
           <div className="hidden lg:block lg:flex-[35] lg:min-w-[280px] overflow-y-auto px-4 py-5 bg-white">
             <RightJourneyMap
               selectedItem={selectedItem}
