@@ -210,21 +210,13 @@ interface DocShellProps {
 }
 
 const DocShell: React.FC<DocShellProps> = ({ portalId, areaId, title, onClose, children, hideHeaderFooter = false }) => {
+  const [customBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
   const [templateMode, setTemplateMode] = useState<'generated' | 'custom'>(() => {
     return localStorage.getItem('autosuite_letterhead_bg') ? 'custom' : 'generated';
   });
-  const [customBg, setCustomBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
-
-  useEffect(() => {
-    const storedBg = localStorage.getItem('autosuite_letterhead_bg') || '';
-    setCustomBg(storedBg);
-    if (storedBg && templateMode === 'generated') {
-      setTemplateMode('custom');
-    }
-  }, []);
 
   return createPortal(
-    <div id={portalId} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
+    <div id={portalId} className="fixed inset-0 bg-slate-950/80 z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-slate-100 rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col overflow-hidden text-slate-700 portal-modal-content">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0 print-hide">
           <div>

@@ -17,7 +17,7 @@ import CustomerRegistry from './pages/CustomerRegistry';
 import Login from './pages/Login';
 
 // Heavy pages — lazy loaded (code-split)
-const VehicleJourney = React.lazy(() => import('./pages/VehicleJourney'));
+const VehicleJourney = React.lazy(() => import('./pages/VehicleJourney/index'));
 const Procurement = VehicleJourney;
 const DealDesk = VehicleJourney;
 const FniLogistics = VehicleJourney;
