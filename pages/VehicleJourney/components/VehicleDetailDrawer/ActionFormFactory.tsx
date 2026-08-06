@@ -5,6 +5,7 @@ import {
   BanknoteIcon, Sparkles, ArrowRight, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '../../../../UI';
+import { EvidenceUploadZone } from './EvidenceUploadZone';
 
 type ActionForms = {
   transitDate: string; setTransitDate: (v: string) => void;
@@ -140,6 +141,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         <FieldGroup columns={1}>
           {notesField}
         </FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Confirm LC Opened" icon={Landmark} onClick={forms.handleLinkLC} isLoading={isActionLoading} />
       </div>
     );
@@ -159,6 +161,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           </Field>
           {notesField}
         </FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Mark as Shipped / In Transit" icon={Truck} onClick={forms.handleMarkShipped} isLoading={isActionLoading} />
       </div>
     );
@@ -193,6 +196,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           </Field>
           {notesField}
         </FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Submit GRN & Mark Received" icon={ClipboardList} isLoading={isActionLoading} />
       </form>
     );
@@ -217,6 +221,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           </ul>
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Approve — Move to In Stock" icon={CheckCircle2} variant="success" onClick={forms.handleApproveStock} isLoading={isActionLoading} />
       </div>
     );
@@ -245,6 +250,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           )}
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Allocate Vehicle to Booking" icon={User} onClick={forms.handleAllocateToBooking} isLoading={isActionLoading} />
       </div>
     );
@@ -270,6 +276,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           </select>
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Assign Vehicle & Allocate" icon={User} onClick={forms.handleAllocateVehicleToBooking} isLoading={isActionLoading} />
       </div>
     );
@@ -346,6 +353,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         )}
 
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Structure Payment & Proceed" icon={CreditCard} isLoading={isActionLoading} />
       </form>
     );
@@ -367,6 +375,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           </ul>
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Mark Ready for Delivery" icon={CheckCircle2} variant="success" onClick={forms.handleReadyForDelivery} isLoading={isActionLoading} />
       </div>
     );
@@ -382,6 +391,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           <p className="text-xs text-surface-500 mt-1">Confirm handover form is signed and keys have been released to the customer.</p>
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Complete Delivery 🎉" variant="success" onClick={forms.handleCompleteDelivery} isLoading={isActionLoading} />
       </div>
     );
@@ -409,6 +419,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           I've sent the activation email — will update policy number later
         </label>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Activate Insurance" icon={ShieldCheck} onClick={forms.handleInsuranceActivate} isLoading={isActionLoading} />
       </div>
     );
@@ -425,6 +436,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           <p className="text-xs text-violet-600">Generate and send the allotment letter to the financing bank. This progresses the deal into the bank's processing queue.</p>
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Generate & Send Allotment Letter" icon={FileText} onClick={forms.handleGenerateAllotment} isLoading={isActionLoading} />
       </div>
     );
@@ -438,6 +450,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           <TextInput value={forms.registrationNo} onChange={e => forms.setRegistrationNo(e.target.value)} placeholder="e.g. BA 1 JA 1234" />
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Submit DoTM Registration" icon={Stamp} onClick={forms.handleRegisterDoTM} isLoading={isActionLoading} />
       </div>
     );
@@ -462,6 +475,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           )}
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Confirm Insurance Endorsed" icon={ShieldCheck} onClick={forms.handleEndorseInsurance} isLoading={isActionLoading} />
       </div>
     );
@@ -475,6 +489,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           <TextInput type="number" value={forms.disbursementAmt} onChange={e => forms.setDisbursementAmt(e.target.value)} placeholder="NPR" />
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
+        <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA label="Confirm Disbursement Received" icon={BanknoteIcon} variant="success" onClick={forms.handleDisbursementSubmit} isLoading={isActionLoading} />
       </div>
     );
