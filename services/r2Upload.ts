@@ -38,9 +38,6 @@ async function getSigningKey(secretKey: string, dateStamp: string, region: strin
   return hmacSha256(kService, 'aws4_request');
 }
 
-const DEFAULT_ACCESS_KEY_ID = 'c6ddc89d7bb1741b8b070bba02541d46';
-const DEFAULT_SECRET_ACCESS_KEY = '2d9e29e016b24ecfc3dc91b9da92a79575c0905686ec237a0898f2eea7191f75';
-
 /**
  * Upload a file to Cloudflare R2 using AWS Signature V4.
  * @param file - The File object to upload
@@ -48,8 +45,14 @@ const DEFAULT_SECRET_ACCESS_KEY = '2d9e29e016b24ecfc3dc91b9da92a79575c0905686ec2
  * @returns Public URL of the uploaded file
  */
 export async function uploadToR2(file: File, path: string): Promise<string> {
-  const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID || DEFAULT_ACCESS_KEY_ID;
-  const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY || DEFAULT_SECRET_ACCESS_KEY;
+  const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID;
+  const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error(
+      'R2 credentials not configured. Please ensure VITE_R2_ACCESS_KEY_ID and VITE_R2_SECRET_ACCESS_KEY environment variables are set in your environment / Vercel settings.'
+    );
+  }
 
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '').slice(0, 15) + 'Z'; // 20250101T120000Z
@@ -123,8 +126,9 @@ export async function uploadToR2(file: File, path: string): Promise<string> {
  * Use this to open/preview stored documents from the UI.
  */
 export async function generatePresignedGetUrl(path: string, expiresInSeconds = 3600): Promise<string> {
-  const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID || DEFAULT_ACCESS_KEY_ID;
-  const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY || DEFAULT_SECRET_ACCESS_KEY;
+  const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID;
+  const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+  if (!accessKeyId || !secretAccessKey) return '';
 
   const region = 'auto';
   const service = 's3';
