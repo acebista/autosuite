@@ -189,66 +189,110 @@ export const EvidenceUploadZone: React.FC<EvidenceUploadZoneProps> = ({
     }
   };
 
+  const totalRequired = configs.filter(c => c.required).length;
+  const uploadedRequired = configs.filter(c => c.required).filter(c => {
+    return !!(docMap[c.key] || localStorage.getItem(`evidence_${dealId}_${c.key}`));
+  }).length;
+  const totalOptional = configs.filter(c => !c.required).length;
+  const uploadedOptional = configs.filter(c => !c.required).filter(c => {
+    return !!(docMap[c.key] || localStorage.getItem(`evidence_${dealId}_${c.key}`));
+  }).length;
+  const allRequiredDone = uploadedRequired === totalRequired;
+
   return (
     <div className="mt-4 pt-4 border-t border-surface-200">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck size={16} className="text-deepal-600" />
-        <h4 className="text-xs font-bold text-surface-800 uppercase tracking-wider font-display">
-          Step Verification Evidence (Cloudflare R2)
-        </h4>
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={15} className="text-deepal-600" />
+          <h4 className="text-xs font-bold text-surface-800 uppercase tracking-wider font-display">
+            Step Documents
+          </h4>
+        </div>
+        {/* Summary pill */}
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+          allRequiredDone
+            ? 'bg-emerald-100 text-emerald-700'
+            : 'bg-red-100 text-red-700'
+        }`}>
+          {allRequiredDone ? (
+            <><CheckCircle2 size={11} /> All required uploaded</>
+          ) : (
+            <><AlertCircle size={11} /> {uploadedRequired}/{totalRequired} required &bull; {totalRequired - uploadedRequired} missing</>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {configs.map(cfg => {
           const rawUrl = docMap[cfg.key] || localStorage.getItem(`evidence_${dealId}_${cfg.key}`);
           const viewUrl = presignedMap[cfg.key] || rawUrl;
           const isUploading = uploadingKeys[cfg.key];
           const hasFile = !!rawUrl;
+          const isMissing = cfg.required && !hasFile;
 
           return (
             <div
               key={cfg.key}
-              className={`p-3.5 rounded-2xl border transition-all ${
+              className={`rounded-2xl border transition-all ${
                 hasFile
-                  ? 'bg-emerald-50/60 border-emerald-200'
-                  : cfg.required
-                  ? 'bg-surface-50 border-surface-200 hover:border-deepal-300'
-                  : 'bg-surface-50/50 border-dashed border-surface-200'
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : isMissing
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-surface-50/60 border-dashed border-surface-200'
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
+              {/* Status stripe at top */}
+              {isMissing && (
+                <div className="flex items-center gap-1.5 px-3.5 pt-2.5 pb-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                  <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-widest">Missing — Required</span>
+                </div>
+              )}
+              {hasFile && (
+                <div className="flex items-center gap-1.5 px-3.5 pt-2.5 pb-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest">Uploaded</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3 p-3">
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                  <div className={`p-2 rounded-xl flex-shrink-0 mt-0.5 ${
-                    hasFile ? 'bg-emerald-100 text-emerald-600' : 'bg-surface-200/70 text-surface-600'
+                  <div className={`p-2 rounded-xl flex-shrink-0 ${
+                    hasFile
+                      ? 'bg-emerald-100 text-emerald-600'
+                      : isMissing
+                      ? 'bg-red-100 text-red-500'
+                      : 'bg-surface-200/70 text-surface-500'
                   }`}>
-                    {hasFile ? <CheckCircle2 size={16} /> : <FileText size={16} />}
+                    {hasFile ? <CheckCircle2 size={15} /> : isMissing ? <AlertCircle size={15} /> : <FileText size={15} />}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-surface-900">{cfg.label}</p>
-                      {cfg.required ? (
-                        <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-md">
-                          Required *
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-medium text-surface-500 bg-surface-200 px-1.5 py-0.5 rounded-md">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`text-xs font-bold ${
+                        hasFile ? 'text-emerald-900' : isMissing ? 'text-red-900' : 'text-surface-700'
+                      }`}>{cfg.label}</p>
+                      {!cfg.required && (
+                        <span className="text-[9px] font-semibold text-surface-400 bg-surface-200 px-1.5 py-0.5 rounded-md">
                           Optional
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-surface-500 mt-0.5 leading-snug">{cfg.description}</p>
+                    <p className={`text-[11px] mt-0.5 leading-snug ${
+                      isMissing ? 'text-red-400' : 'text-surface-400'
+                    }`}>{cfg.description}</p>
                   </div>
                 </div>
 
-                {/* Upload Action / View Link */}
+                {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {isUploading ? (
                     <div className="flex items-center gap-1.5 text-xs text-deepal-600 font-bold px-3 py-1.5 bg-deepal-50 rounded-xl">
-                      <Loader2 size={14} className="animate-spin" />
-                      <span>R2...</span>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Uploading…</span>
                     </div>
                   ) : hasFile ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       {viewUrl && (
                         <a
                           href={viewUrl}
@@ -256,38 +300,28 @@ export const EvidenceUploadZone: React.FC<EvidenceUploadZoneProps> = ({
                           rel="noreferrer"
                           className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl transition"
                         >
-                          <Eye size={13} />
-                          <span>View Proof</span>
+                          <Eye size={12} />
+                          <span>View</span>
                         </a>
                       )}
                       {!readOnly && (
-                        <label className="cursor-pointer text-[11px] text-surface-500 hover:text-surface-800 underline px-1 py-1">
+                        <label className="cursor-pointer text-[11px] text-surface-400 hover:text-surface-700 bg-surface-100 hover:bg-surface-200 px-2.5 py-1.5 rounded-xl transition">
                           Replace
-                          <input
-                            type="file"
-                            accept={cfg.allowedTypes}
-                            className="hidden"
-                            onChange={e => {
-                              const f = e.target.files?.[0];
-                              if (f) handleFileChange(cfg, f);
-                            }}
-                          />
+                          <input type="file" accept={cfg.allowedTypes} className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(cfg, f); }} />
                         </label>
                       )}
                     </div>
                   ) : !readOnly ? (
-                    <label className="flex items-center gap-1.5 text-xs font-bold text-white bg-deepal-500 hover:bg-deepal-600 active:scale-95 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm transition">
-                      <Upload size={13} />
-                      <span>Upload Proof</span>
-                      <input
-                        type="file"
-                        accept={cfg.allowedTypes}
-                        className="hidden"
-                        onChange={e => {
-                          const f = e.target.files?.[0];
-                          if (f) handleFileChange(cfg, f);
-                        }}
-                      />
+                    <label className={`flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-2 rounded-xl cursor-pointer shadow-sm transition active:scale-95 ${
+                      isMissing
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-deepal-500 hover:bg-deepal-600'
+                    }`}>
+                      <Upload size={12} />
+                      <span>Upload</span>
+                      <input type="file" accept={cfg.allowedTypes} className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(cfg, f); }} />
                     </label>
                   ) : (
                     <span className="text-xs text-surface-400 italic">No document</span>
@@ -298,6 +332,13 @@ export const EvidenceUploadZone: React.FC<EvidenceUploadZoneProps> = ({
           );
         })}
       </div>
+
+      {/* Optional docs sub-count if any */}
+      {totalOptional > 0 && (
+        <p className="mt-2 text-[10px] text-surface-400 text-right">
+          {uploadedOptional}/{totalOptional} optional document{totalOptional > 1 ? 's' : ''} uploaded
+        </p>
+      )}
     </div>
   );
 };
