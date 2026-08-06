@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Settings as SettingsIcon, Share2, Plus, Globe, Bell, MessageSquare, Facebook, Smartphone, Shield, FileText, Image as ImageIcon, Check } from 'lucide-react';
+import { User, Settings as SettingsIcon, Share2, Plus, Globe, Bell, MessageSquare, Facebook, Smartphone, Shield, FileText, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
 import { Card, Button, Badge, SectionHeader, useToast } from '../UI';
 import { useUsers } from '../api';
 import { useAuth } from '../AuthContext';
 import { useAuthStore } from '../lib/store';
 import { updateOrganization } from '../lib/rbac';
+import { uploadToR2, resolveR2Url } from '../services/r2Upload';
 
 const IntegrationCard: React.FC<{ name: string; desc: string; icon: any; connected: boolean }> = ({ name, desc, icon: Icon, connected }) => (
    <div className="border border-slate-200 rounded-2xl p-5 flex flex-col justify-between h-full bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -39,6 +40,7 @@ const Settings: React.FC = () => {
     const [brandAddress, setBrandAddress] = useState(user?.orgAddress || '');
     const [brandLogo, setBrandLogo] = useState(user?.orgLogo || '');
     const [letterheadBg, setLetterheadBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
+    const [isUploadingLetterhead, setIsUploadingLetterhead] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -202,40 +204,64 @@ const Settings: React.FC = () => {
                                  Upload your official company letterhead PDF or PNG/JPG image background. Document Vault will overlay GRN, Allotment Letters, and Invoices directly onto your exact letterhead template.
                               </p>
                               
-                              <div className="flex flex-col sm:flex-row gap-3">
-                                 <input 
-                                    type="text" 
-                                    value={letterheadBg} 
-                                    onChange={(e) => {
-                                       setLetterheadBg(e.target.value);
-                                       localStorage.setItem('autosuite_letterhead_bg', e.target.value);
-                                    }}
-                                    placeholder="Enter Image/PDF URL or click Upload File"
-                                    className="flex-1 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white" 
-                                 />
-                                 <label className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer shrink-0 transition-colors">
-                                    <FileText size={16} />
-                                    <span>Upload Letterhead Image/PDF</span>
-                                    <input
-                                       type="file"
-                                       accept="image/*,.pdf"
-                                       className="hidden"
-                                       onChange={(e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                             const reader = new FileReader();
-                                             reader.onload = (ev) => {
-                                                const result = ev.target?.result as string;
-                                                setLetterheadBg(result);
-                                                localStorage.setItem('autosuite_letterhead_bg', result);
-                                                addToast('Custom letterhead background template saved!', 'success');
-                                             };
-                                             reader.readAsDataURL(file);
-                                          }
-                                       }}
-                                    />
-                                 </label>
-                              </div>
+                               <div className="flex flex-col sm:flex-row gap-3">
+                                  <input 
+                                     type="text" 
+                                     value={letterheadBg} 
+                                     onChange={(e) => {
+                                        setLetterheadBg(e.target.value);
+                                        localStorage.setItem('autosuite_letterhead_bg', e.target.value);
+                                     }}
+                                     placeholder="Enter Cloudflare R2 Image/PDF URL or click Upload File"
+                                     className="flex-1 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-slate-50 focus:bg-white" 
+                                  />
+                                  <label className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer shrink-0 transition-colors">
+                                     {isUploadingLetterhead ? (
+                                        <>
+                                           <Loader2 size={16} className="animate-spin text-blue-400" />
+                                           <span>Uploading to Cloudflare R2...</span>
+                                        </>
+                                     ) : (
+                                        <>
+                                           <FileText size={16} />
+                                           <span>Upload Letterhead Image/PDF</span>
+                                        </>
+                                     )}
+                                     <input
+                                        type="file"
+                                        accept="image/*,.pdf"
+                                        disabled={isUploadingLetterhead}
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                           const file = e.target.files?.[0];
+                                           if (file) {
+                                              setIsUploadingLetterhead(true);
+                                              try {
+                                                 const ext = file.name.split('.').pop() || 'png';
+                                                 const r2Path = `letterheads/${orgId || 'default'}/custom_letterhead_${Date.now()}.${ext}`;
+                                                 const rawR2Url = await uploadToR2(file, r2Path);
+                                                 const resolvedUrl = await resolveR2Url(rawR2Url);
+                                                 setLetterheadBg(resolvedUrl);
+                                                 localStorage.setItem('autosuite_letterhead_bg', resolvedUrl);
+                                                 addToast('Custom letterhead background template uploaded to Cloudflare R2 and saved!', 'success');
+                                              } catch (err: any) {
+                                                 console.error('Cloudflare R2 letterhead upload error:', err);
+                                                 const reader = new FileReader();
+                                                 reader.onload = (ev) => {
+                                                    const result = ev.target?.result as string;
+                                                    setLetterheadBg(result);
+                                                    localStorage.setItem('autosuite_letterhead_bg', result);
+                                                    addToast('Saved letterhead background locally.', 'info');
+                                                 };
+                                                 reader.readAsDataURL(file);
+                                              } finally {
+                                                 setIsUploadingLetterhead(false);
+                                              }
+                                           }
+                                        }}
+                                     />
+                                  </label>
+                               </div>
 
                               {letterheadBg && (
                                  <div className="mt-4 flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl">

@@ -191,3 +191,33 @@ export function pathFromR2Url(url: string): string {
   const idx = url.indexOf(marker);
   return idx >= 0 ? url.slice(idx + marker.length) : url;
 }
+
+/**
+ * Given a URL or R2 path, resolve it to a viewable URL.
+ * If it's an R2 URL or key, generates a presigned GET URL.
+ */
+export async function resolveR2Url(urlOrPath: string): Promise<string> {
+  if (!urlOrPath) return '';
+  if (urlOrPath.startsWith('data:')) return urlOrPath; // base64 fallback
+  
+  const key = pathFromR2Url(urlOrPath);
+  try {
+    return await generatePresignedGetUrl(key, 86400); // 24-hour presigned URL
+  } catch (err) {
+    console.warn('Failed to resolve R2 presigned URL:', err);
+    return urlOrPath;
+  }
+}
+
+/**
+ * Get Cloudflare R2 presigned URL for the official letterhead / logo asset.
+ */
+export async function getLetterheadR2Url(): Promise<string> {
+  try {
+    return await generatePresignedGetUrl('assets/logo3.png', 86400);
+  } catch (err) {
+    console.warn('Failed to get letterhead R2 URL, using local fallback:', err);
+    return '/logo3.png';
+  }
+}
+

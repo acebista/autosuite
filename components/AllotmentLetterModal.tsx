@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Printer } from 'lucide-react';
 import { Button } from '../UI';
 import { LETTERHEAD, DocHeader, DocFooter, DocSignature, PRINT_STYLES, EditableText } from './DocumentsVault';
+import { resolveR2Url } from '../services/r2Upload';
 
 interface AllotmentLetterModalProps {
   isOpen: boolean;
@@ -33,9 +34,13 @@ export const AllotmentLetterModal: React.FC<AllotmentLetterModalProps> = ({ isOp
 
   useEffect(() => {
     const storedBg = localStorage.getItem('autosuite_letterhead_bg') || '';
-    setCustomBg(storedBg);
-    if (storedBg && templateMode === 'generated') {
-      setTemplateMode('custom');
+    if (storedBg) {
+      resolveR2Url(storedBg).then(url => {
+        if (url) {
+          setCustomBg(url);
+          setTemplateMode('custom');
+        }
+      });
     }
   }, []);
 

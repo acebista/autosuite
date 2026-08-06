@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Printer, FileText, Package, Shield, Landmark, Truck, ClipboardList } from 'lucide-react';
 import { AllotmentLetterModal } from './AllotmentLetterModal';
+import { resolveR2Url } from '../services/r2Upload';
 
 // ─── Shared Letterhead Configuration ──────────────────────────────────────────
 
@@ -210,10 +211,19 @@ interface DocShellProps {
 }
 
 const DocShell: React.FC<DocShellProps> = ({ portalId, areaId, title, onClose, children, hideHeaderFooter = false }) => {
-  const [customBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
+  const [customBg, setCustomBg] = useState<string>(() => localStorage.getItem('autosuite_letterhead_bg') || '');
   const [templateMode, setTemplateMode] = useState<'generated' | 'custom'>(() => {
     return localStorage.getItem('autosuite_letterhead_bg') ? 'custom' : 'generated';
   });
+
+  useEffect(() => {
+    const storedBg = localStorage.getItem('autosuite_letterhead_bg') || '';
+    if (storedBg) {
+      resolveR2Url(storedBg).then(url => {
+        if (url) setCustomBg(url);
+      });
+    }
+  }, []);
 
   return createPortal(
     <div id={portalId} className="fixed inset-0 bg-slate-950/80 z-[70] flex items-center justify-center p-4 overflow-y-auto">
