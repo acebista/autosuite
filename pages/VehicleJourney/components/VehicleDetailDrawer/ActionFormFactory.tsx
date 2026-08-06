@@ -5,7 +5,7 @@ import {
   BanknoteIcon, Sparkles, ArrowRight, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '../../../../UI';
-import { EvidenceUploadZone } from './EvidenceUploadZone';
+import { EvidenceUploadZone, isStateEvidenceComplete } from './EvidenceUploadZone';
 
 type ActionForms = {
   transitDate: string; setTransitDate: (v: string) => void;
@@ -85,30 +85,47 @@ const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props)
   />
 );
 
-const CTA: React.FC<{ label: string; icon?: React.ElementType; onClick?: () => void; isLoading?: boolean; variant?: 'primary' | 'secondary' | 'success' }> = ({
-  label, icon: Icon, onClick, isLoading, variant = 'primary'
-}) => {
+const CTA: React.FC<{
+  label: string;
+  icon?: React.ElementType;
+  onClick?: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
+  variant?: 'primary' | 'secondary' | 'success';
+}> = ({ label, icon: Icon, onClick, isLoading, disabled, disabledReason, variant = 'primary' }) => {
   const styles = {
     primary: 'bg-deepal-500 hover:bg-deepal-600 text-white',
     secondary: 'bg-purple-500 hover:bg-purple-600 text-white',
     success: 'bg-emerald-500 hover:bg-emerald-600 text-white',
   };
   return (
-    <button
-      onClick={onClick}
-      disabled={isLoading}
-      className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-60 ${styles[variant]}`}
-    >
-      {isLoading ? <Loader2 size={16} className="animate-spin" /> : Icon ? <Icon size={16} /> : null}
-      {label}
-      {!isLoading && <ArrowRight size={14} className="ml-auto opacity-60" />}
-    </button>
+    <div className="space-y-1.5">
+      <button
+        onClick={onClick}
+        disabled={isLoading || disabled}
+        className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md transition-all duration-200 active:scale-[0.98] ${
+          disabled ? 'bg-surface-200 text-surface-400 cursor-not-allowed shadow-none border border-surface-300' : styles[variant]
+        }`}
+      >
+        {isLoading ? <Loader2 size={16} className="animate-spin" /> : Icon ? <Icon size={16} /> : null}
+        {disabled ? (disabledReason || 'Upload Required Proof First 🔒') : label}
+        {!isLoading && !disabled && <ArrowRight size={14} className="ml-auto opacity-60" />}
+      </button>
+      {disabled && disabledReason && (
+        <p className="text-[11px] text-amber-600 font-semibold text-center flex items-center justify-center gap-1">
+          <span>⚠️</span> {disabledReason}
+        </p>
+      )}
+    </div>
   );
 };
 
 export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedItem, deals, vehicles, forms }) => {
   const state = selectedItem.state;
   const { isActionLoading } = forms;
+  const isEvidenceComplete = isStateEvidenceComplete(state, selectedItem.id);
+  const evidenceReason = "Please upload required proof document to proceed";
 
   const notesField = (
     <Field label="Transition Notes" colSpan>
@@ -142,7 +159,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           {notesField}
         </FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Confirm LC Opened" icon={Landmark} onClick={forms.handleLinkLC} isLoading={isActionLoading} />
+        <CTA
+          label="Confirm LC Opened"
+          icon={Landmark}
+          onClick={forms.handleLinkLC}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required LC copy proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -162,7 +186,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           {notesField}
         </FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Mark as Shipped / In Transit" icon={Truck} onClick={forms.handleMarkShipped} isLoading={isActionLoading} />
+        <CTA
+          label="Mark as Shipped / In Transit"
+          icon={Truck}
+          onClick={forms.handleMarkShipped}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required LC proof document to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -197,7 +228,13 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           {notesField}
         </FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Submit GRN & Mark Received" icon={ClipboardList} isLoading={isActionLoading} />
+        <CTA
+          label="Submit GRN & Mark Received"
+          icon={ClipboardList}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required GRN proof document to proceed" : undefined}
+        />
       </form>
     );
   }
@@ -222,7 +259,15 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Approve — Move to In Stock" icon={CheckCircle2} variant="success" onClick={forms.handleApproveStock} isLoading={isActionLoading} />
+        <CTA
+          label="Approve — Move to In Stock"
+          icon={CheckCircle2}
+          variant="success"
+          onClick={forms.handleApproveStock}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required GRN proof document to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -277,7 +322,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Assign Vehicle & Allocate" icon={User} onClick={forms.handleAllocateVehicleToBooking} isLoading={isActionLoading} />
+        <CTA
+          label="Assign Vehicle & Allocate"
+          icon={User}
+          onClick={forms.handleAllocateVehicleToBooking}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Booking Slip & KYC proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -354,7 +406,13 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
 
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Structure Payment & Proceed" icon={CreditCard} isLoading={isActionLoading} />
+        <CTA
+          label="Structure Payment & Proceed"
+          icon={CreditCard}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Bank DO & Down Payment receipt to proceed" : undefined}
+        />
       </form>
     );
   }
@@ -376,7 +434,15 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Mark Ready for Delivery" icon={CheckCircle2} variant="success" onClick={forms.handleReadyForDelivery} isLoading={isActionLoading} />
+        <CTA
+          label="Mark Ready for Delivery"
+          icon={CheckCircle2}
+          variant="success"
+          onClick={forms.handleReadyForDelivery}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Allotment Letter proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -392,7 +458,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Complete Delivery 🎉" variant="success" onClick={forms.handleCompleteDelivery} isLoading={isActionLoading} />
+        <CTA
+          label="Complete Delivery 🎉"
+          variant="success"
+          onClick={forms.handleCompleteDelivery}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required PDI Inspection Report to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -420,7 +493,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </label>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Activate Insurance" icon={ShieldCheck} onClick={forms.handleInsuranceActivate} isLoading={isActionLoading} />
+        <CTA
+          label="Activate Insurance"
+          icon={ShieldCheck}
+          onClick={forms.handleInsuranceActivate}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Delivery Challan proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -437,7 +517,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Generate & Send Allotment Letter" icon={FileText} onClick={forms.handleGenerateAllotment} isLoading={isActionLoading} />
+        <CTA
+          label="Generate & Send Allotment Letter"
+          icon={FileText}
+          onClick={forms.handleGenerateAllotment}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Insurance Policy proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -451,7 +538,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Submit DoTM Registration" icon={Stamp} onClick={forms.handleRegisterDoTM} isLoading={isActionLoading} />
+        <CTA
+          label="Submit DoTM Registration"
+          icon={Stamp}
+          onClick={forms.handleRegisterDoTM}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Bank Allotment proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -476,7 +570,14 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </div>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Confirm Insurance Endorsed" icon={ShieldCheck} onClick={forms.handleEndorseInsurance} isLoading={isActionLoading} />
+        <CTA
+          label="Confirm Insurance Endorsed"
+          icon={ShieldCheck}
+          onClick={forms.handleEndorseInsurance}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Bluebook photo proof to proceed" : undefined}
+        />
       </div>
     );
   }
@@ -490,7 +591,15 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
-        <CTA label="Confirm Disbursement Received" icon={BanknoteIcon} variant="success" onClick={forms.handleDisbursementSubmit} isLoading={isActionLoading} />
+        <CTA
+          label="Confirm Disbursement Received"
+          icon={BanknoteIcon}
+          variant="success"
+          onClick={forms.handleDisbursementSubmit}
+          isLoading={isActionLoading}
+          disabled={!isEvidenceComplete}
+          disabledReason={!isEvidenceComplete ? "Upload required Endorsed Insurance proof to proceed" : undefined}
+        />
       </div>
     );
   }

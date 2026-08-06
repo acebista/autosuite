@@ -59,6 +59,18 @@ export const STATE_EVIDENCE_MAP: Record<string, EvidenceConfig[]> = {
   ]
 };
 
+export function isStateEvidenceComplete(state: string, dealId: string, uploadedDocs: Record<string, string> = {}): boolean {
+  const configs = STATE_EVIDENCE_MAP[state] || [];
+  const requiredConfigs = configs.filter(c => c.required);
+  if (requiredConfigs.length === 0) return true;
+
+  return requiredConfigs.every(cfg => {
+    const hasProp = !!uploadedDocs[cfg.key];
+    const hasStorage = !!localStorage.getItem(`evidence_${dealId}_${cfg.key}`);
+    return hasProp || hasStorage;
+  });
+}
+
 interface EvidenceUploadZoneProps {
   state: string;
   dealId?: string;

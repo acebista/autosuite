@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle, AlertCircle } from 'lucide-react';
 import { BottleneckInfo } from '../../hooks/useBottleneck';
 import { ActionFormFactory } from './ActionFormFactory';
+import { StageEvidenceLog } from './StageEvidenceLog';
 
 interface LeftActionPanelProps {
   selectedItem: any;
@@ -165,6 +166,9 @@ export const LeftActionPanel: React.FC<LeftActionPanelProps> = ({
           ))}
         </div>
       )}
+
+      {/* ─── Zone C: Completed Stages Proof Vault ───────────────────────── */}
+      <StageEvidenceLog selectedItem={selectedItem} pis={pis} />
     </div>
   );
 };
