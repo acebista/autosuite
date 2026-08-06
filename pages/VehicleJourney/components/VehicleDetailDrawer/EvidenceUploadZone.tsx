@@ -26,30 +26,36 @@ export const STATE_EVIDENCE_MAP: Record<string, EvidenceConfig[]> = {
   ],
   BOOKED: [
     { key: 'booking_slip', label: 'Booking Slip / Token Receipt', description: 'Upload signed booking slip & deposit proof', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'customer_kyc', label: 'Customer Citizenship / PAN Copy', description: 'Individual Citizenship card OR Company PAN Certificate', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'customer_kyc', label: 'Customer Citizenship / PAN Copy', description: 'Individual Citizenship card OR Company PAN Certificate', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & signature — required for Bluebook application & Bank Allotment file', required: true, allowedTypes: '.pdf,.jpg,.png' }
   ],
   ALLOCATED: [
     { key: 'allocation_note', label: 'VIN Allotment Slip (Optional)', description: 'Internal stock allocation confirmation', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   PAYMENT_STRUCTURED: [
     { key: 'bank_do', label: 'Bank Delivery Order (DO)', description: 'Upload official DO from financing bank', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'down_payment_receipt', label: 'Down Payment Bank Deposit Slip', description: 'Upload customer margin money payment proof', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'down_payment_receipt', label: 'Down Payment Bank Deposit Slip', description: 'Upload customer margin money payment proof', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'bank_voucher_cheque', label: 'Bank Voucher / Cheque Copy', description: 'Audit proof that customer deposited minimum 20%/50% margin money before bank DO activation', required: true, allowedTypes: '.pdf,.jpg,.png' }
   ],
   BANK_ALLOTMENT: [
     { key: 'allotment_letter', label: 'Bank Allotment Letter', description: 'Upload signed allotment advice issued to bank', required: true, allowedTypes: '.pdf,.jpg,.png' }
   ],
   READY_FOR_DELIVERY: [
-    { key: 'pdi_report', label: 'PDI Inspection Checklist Report', description: 'Upload signed 50-point PDI checklist', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'pdi_report', label: 'PDI Inspection Checklist Report', description: 'Upload signed 50-point PDI checklist', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'ev_charger_certificate', label: 'EV Charger Handover Certificate (EV Only)', description: 'Handover checklist for 7kW AC Home Wallbox & Portable Charger — EV models only', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   DELIVERED: [
-    { key: 'delivery_challan', label: 'Signed Delivery Challan', description: 'Upload customer signed physical delivery receipt', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'delivery_challan', label: 'Signed Delivery Challan', description: 'Upload customer signed physical delivery receipt', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   INSURANCE_ACTIVATION: [
     { key: 'insurance_policy', label: 'Insurance Policy / Cover Note', description: 'Upload comprehensive 1st-party insurance policy', required: true, allowedTypes: '.pdf,.jpg,.png' }
   ],
   DOTM_REGISTRATION: [
     { key: 'bluebook_photo', label: 'DoTM Bluebook Photo / Scan', description: 'Upload photo of physical registration bluebook', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'dafa_form', label: 'Dafa / Excise Tax Form (Optional)', description: 'Upload DoTM Dafa tax clearance receipt', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'pragyapan_patra', label: 'Customs Declaration / Pragyapan Patra', description: 'DoTM requires Customs Import Clearance copy for 1st-time vehicle registration in Nepal', required: true, allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'dafa_form', label: 'Dafa / Excise Tax Form', description: 'Upload DoTM Dafa tax clearance receipt', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   INSURANCE_ENDORSEMENT: [
     { key: 'endorsed_insurance', label: 'Endorsed Insurance Policy', description: 'Upload policy with Bank Hire Purchase Endorsement', required: true, allowedTypes: '.pdf,.jpg,.png' }
@@ -69,6 +75,43 @@ export function isStateEvidenceComplete(state: string, dealId: string, uploadedD
     const hasStorage = !!localStorage.getItem(`evidence_${dealId}_${cfg.key}`);
     return hasProp || hasStorage;
   });
+}
+
+/** Returns list of missing required evidence labels for a given state */
+export function getMissingEvidenceLabels(state: string, dealId: string, uploadedDocs: Record<string, string> = {}): string[] {
+  const configs = STATE_EVIDENCE_MAP[state] || [];
+  return configs
+    .filter(cfg => cfg.required)
+    .filter(cfg => {
+      const hasProp = !!uploadedDocs[cfg.key];
+      const hasStorage = !!localStorage.getItem(`evidence_${dealId}_${cfg.key}`);
+      return !hasProp && !hasStorage;
+    })
+    .map(cfg => cfg.label);
+}
+
+const STAGE_ORDER_ALL = [
+  'PO_ISSUED', 'LC_OPENED', 'IN_TRANSIT', 'RECEIVED', 'IN_STOCK',
+  'BOOKED', 'ALLOCATED', 'PAYMENT_STRUCTURED', 'BANK_ALLOTMENT',
+  'READY_FOR_DELIVERY', 'DELIVERED', 'INSURANCE_ACTIVATION',
+  'DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'
+];
+
+/** Check if ALL required evidence across ALL completed journey stages is uploaded */
+export function isAllJourneyEvidenceComplete(currentState: string, dealId: string): { complete: boolean; missing: Array<{ stage: string; labels: string[] }> } {
+  const currentIdx = STAGE_ORDER_ALL.indexOf(currentState);
+  // Include current stage in the check
+  const stagesToCheck = STAGE_ORDER_ALL.slice(0, currentIdx + 1);
+
+  const missing: Array<{ stage: string; labels: string[] }> = [];
+  for (const stage of stagesToCheck) {
+    const labels = getMissingEvidenceLabels(stage, dealId);
+    if (labels.length > 0) {
+      missing.push({ stage, labels });
+    }
+  }
+
+  return { complete: missing.length === 0, missing };
 }
 
 interface EvidenceUploadZoneProps {

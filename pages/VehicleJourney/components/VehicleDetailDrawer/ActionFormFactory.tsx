@@ -5,7 +5,7 @@ import {
   BanknoteIcon, Sparkles, ArrowRight, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '../../../../UI';
-import { EvidenceUploadZone, isStateEvidenceComplete } from './EvidenceUploadZone';
+import { EvidenceUploadZone, isStateEvidenceComplete, getMissingEvidenceLabels, isAllJourneyEvidenceComplete } from './EvidenceUploadZone';
 
 type ActionForms = {
   transitDate: string; setTransitDate: (v: string) => void;
@@ -85,38 +85,76 @@ const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props)
   />
 );
 
+/**
+ * CTA button with two modes:
+ *  - `warnOnly=true` (default for intermediate steps): button stays active, shows amber warning banner
+ *  - `warnOnly=false` (hard gate for final step): button disabled until missingLabels is empty
+ */
 const CTA: React.FC<{
   label: string;
   icon?: React.ElementType;
   onClick?: () => void;
   isLoading?: boolean;
-  disabled?: boolean;
-  disabledReason?: string;
+  missingLabels?: string[];
+  warnOnly?: boolean;
   variant?: 'primary' | 'secondary' | 'success';
-}> = ({ label, icon: Icon, onClick, isLoading, disabled, disabledReason, variant = 'primary' }) => {
+}> = ({ label, icon: Icon, onClick, isLoading, missingLabels = [], warnOnly = true, variant = 'primary' }) => {
+  const hasMissing = missingLabels.length > 0;
+  const isHardBlocked = !warnOnly && hasMissing;
+
   const styles = {
     primary: 'bg-deepal-500 hover:bg-deepal-600 text-white',
     secondary: 'bg-purple-500 hover:bg-purple-600 text-white',
     success: 'bg-emerald-500 hover:bg-emerald-600 text-white',
   };
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
+      {/* Amber warning banner — shown only when missing docs, for warn-only mode */}
+      {hasMissing && warnOnly && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+          <p className="text-xs font-bold text-amber-700 mb-1">⚠️ Missing proof documents for this step:</p>
+          <ul className="space-y-0.5">
+            {missingLabels.map(label => (
+              <li key={label} className="text-xs text-amber-600 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-amber-500 mt-1.5 font-medium">You can still proceed — upload them anytime before closing the journey.</p>
+        </div>
+      )}
+
+      {/* Hard block banner — only on final disbursement step */}
+      {isHardBlocked && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+          <p className="text-xs font-bold text-red-700 mb-1">🔒 Cannot close journey — missing required documents:</p>
+          <ul className="space-y-0.5">
+            {missingLabels.map(label => (
+              <li key={label} className="text-xs text-red-600 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-red-400 flex-shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-red-500 mt-1.5 font-medium">Upload all required proof documents to complete the vehicle journey.</p>
+        </div>
+      )}
+
       <button
         onClick={onClick}
-        disabled={isLoading || disabled}
+        disabled={isLoading || isHardBlocked}
         className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md transition-all duration-200 active:scale-[0.98] ${
-          disabled ? 'bg-surface-200 text-surface-400 cursor-not-allowed shadow-none border border-surface-300' : styles[variant]
+          isHardBlocked
+            ? 'bg-surface-200 text-surface-400 cursor-not-allowed shadow-none border border-surface-300'
+            : styles[variant]
         }`}
       >
         {isLoading ? <Loader2 size={16} className="animate-spin" /> : Icon ? <Icon size={16} /> : null}
-        {disabled ? (disabledReason || 'Upload Required Proof First 🔒') : label}
-        {!isLoading && !disabled && <ArrowRight size={14} className="ml-auto opacity-60" />}
+        {label}
+        {!isLoading && !isHardBlocked && <ArrowRight size={14} className="ml-auto opacity-60" />}
       </button>
-      {disabled && disabledReason && (
-        <p className="text-[11px] text-amber-600 font-semibold text-center flex items-center justify-center gap-1">
-          <span>⚠️</span> {disabledReason}
-        </p>
-      )}
     </div>
   );
 };
@@ -124,8 +162,11 @@ const CTA: React.FC<{
 export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedItem, deals, vehicles, forms }) => {
   const state = selectedItem.state;
   const { isActionLoading } = forms;
-  const isEvidenceComplete = isStateEvidenceComplete(state, selectedItem.id);
-  const evidenceReason = "Please upload required proof document to proceed";
+  // Per-step missing labels (for amber warnings on intermediate steps)
+  const stepMissingLabels = getMissingEvidenceLabels(state, selectedItem.id);
+  // Journey-wide missing (for hard gate at BANK_DISBURSEMENT final step)
+  const journeyCheck = isAllJourneyEvidenceComplete(state, selectedItem.id);
+  const journeyMissingLabels = journeyCheck.missing.flatMap(m => m.labels.map(l => `[${m.stage.replace(/_/g, ' ')}] ${l}`));
 
   const notesField = (
     <Field label="Transition Notes" colSpan>
@@ -164,8 +205,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={Landmark}
           onClick={forms.handleLinkLC}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required LC copy proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -191,8 +231,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={Truck}
           onClick={forms.handleMarkShipped}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required LC proof document to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -232,8 +271,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           label="Submit GRN & Mark Received"
           icon={ClipboardList}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required GRN proof document to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </form>
     );
@@ -265,8 +303,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           variant="success"
           onClick={forms.handleApproveStock}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required GRN proof document to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -327,8 +364,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={User}
           onClick={forms.handleAllocateVehicleToBooking}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Booking Slip & KYC proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -410,8 +446,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           label="Structure Payment & Proceed"
           icon={CreditCard}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Bank DO & Down Payment receipt to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </form>
     );
@@ -440,8 +475,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           variant="success"
           onClick={forms.handleReadyForDelivery}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Allotment Letter proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -463,8 +497,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           variant="success"
           onClick={forms.handleCompleteDelivery}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required PDI Inspection Report to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -498,8 +531,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={ShieldCheck}
           onClick={forms.handleInsuranceActivate}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Delivery Challan proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -522,8 +554,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={FileText}
           onClick={forms.handleGenerateAllotment}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Insurance Policy proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -543,8 +574,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={Stamp}
           onClick={forms.handleRegisterDoTM}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Bank Allotment proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -575,8 +605,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           icon={ShieldCheck}
           onClick={forms.handleEndorseInsurance}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Bluebook photo proof to proceed" : undefined}
+          missingLabels={stepMissingLabels}
         />
       </div>
     );
@@ -597,8 +626,8 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           variant="success"
           onClick={forms.handleDisbursementSubmit}
           isLoading={isActionLoading}
-          disabled={!isEvidenceComplete}
-          disabledReason={!isEvidenceComplete ? "Upload required Endorsed Insurance proof to proceed" : undefined}
+          missingLabels={journeyMissingLabels}
+          warnOnly={false}
         />
       </div>
     );
