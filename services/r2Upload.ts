@@ -130,6 +130,13 @@ export async function generatePresignedGetUrl(path: string, expiresInSeconds = 3
   const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
   if (!accessKeyId || !secretAccessKey) return '';
 
+  // If already a presigned URL with signature, return as is
+  if (path.includes('X-Amz-Signature=')) return path;
+
+  // Clean path (remove leading slashes and query strings)
+  const cleanPath = pathFromR2Url(path).replace(/^\/+/, '').split('?')[0];
+  if (!cleanPath) return '';
+
   const region = 'auto';
   const service = 's3';
   const now = new Date();
@@ -138,19 +145,22 @@ export async function generatePresignedGetUrl(path: string, expiresInSeconds = 3
   const host = `${ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
 
-  const queryParams = new URLSearchParams({
-    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-    'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Expires': String(expiresInSeconds),
-    'X-Amz-SignedHeaders': 'host',
-  });
+  const queryParams = new URLSearchParams();
+  queryParams.set('X-Amz-Algorithm', 'AWS4-HMAC-SHA256');
+  queryParams.set('X-Amz-Credential', `${accessKeyId}/${credentialScope}`);
+  queryParams.set('X-Amz-Date', amzDate);
+  queryParams.set('X-Amz-Expires', String(expiresInSeconds));
+  queryParams.set('X-Amz-SignedHeaders', 'host');
 
+  // AWS SigV4 specification requires canonical query string to be sorted alphabetically by key name
+  queryParams.sort();
+
+  const canonicalHeaders = `host:${host}\n`;
   const canonicalRequest = [
     'GET',
-    `/${BUCKET}/${path}`,
+    `/${BUCKET}/${cleanPath}`,
     queryParams.toString(),
-    `host:${host}\n`,
+    canonicalHeaders,
     'host',
     'UNSIGNED-PAYLOAD',
   ].join('\n');
@@ -167,7 +177,7 @@ export async function generatePresignedGetUrl(path: string, expiresInSeconds = 3
   const signature = Array.from(new Uint8Array(signatureBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
 
   queryParams.set('X-Amz-Signature', signature);
-  return `${R2_ENDPOINT}/${BUCKET}/${path}?${queryParams.toString()}`;
+  return `${R2_ENDPOINT}/${BUCKET}/${cleanPath}?${queryParams.toString()}`;
 }
 
 /**
@@ -186,9 +196,14 @@ export function buildR2Path(orgId: string, dealId: string, state: string, eviden
 
 /** Extract the R2 object path from a stored URL (for generating presigned view links) */
 export function pathFromR2Url(url: string): string {
+  if (!url) return '';
   const marker = `/${BUCKET}/`;
   const idx = url.indexOf(marker);
-  return idx >= 0 ? url.slice(idx + marker.length) : url;
+  if (idx >= 0) {
+    const rawPath = url.slice(idx + marker.length);
+    return rawPath.split('?')[0];
+  }
+  return url.split('?')[0];
 }
 
 /**
