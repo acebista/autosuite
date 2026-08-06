@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Printer, CheckCircle2 } from 'lucide-react';
+import { X, Printer, CheckCircle2, Maximize2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface DrawerFooterProps {
   selectedItem: any;
@@ -17,8 +18,14 @@ const DELIVERY_STATES = [
 export const DrawerFooter: React.FC<DrawerFooterProps> = ({
   selectedItem, onClose, onOpenPrintVault, onShowAllotment, isSaving
 }) => {
+  const navigate = useNavigate();
   const canPrintGatePass = DELIVERY_STATES.includes(selectedItem.state);
   const isComplete = selectedItem.state === 'BANK_DISBURSEMENT';
+
+  const handleOpenFullView = () => {
+    onClose();
+    navigate(`/vehicle-journey/${selectedItem.id}`);
+  };
 
   return (
     <div className="flex-shrink-0 bg-white border-t border-surface-100 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
@@ -116,6 +123,13 @@ export const DrawerFooter: React.FC<DrawerFooterProps> = ({
             </div>
           )}
           <button
+            onClick={handleOpenFullView}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-900 hover:bg-surface-800 text-white text-sm font-bold shadow-md transition-all duration-200 active:scale-95"
+          >
+            <Maximize2 size={14} />
+            Full View
+          </button>
+          <button
             onClick={onOpenPrintVault}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-deepal-500 hover:bg-deepal-600 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
           >
@@ -136,3 +150,4 @@ export const DrawerFooter: React.FC<DrawerFooterProps> = ({
     </div>
   );
 };
+

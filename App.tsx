@@ -18,6 +18,7 @@ import Login from './pages/Login';
 
 // Heavy pages — lazy loaded (code-split)
 const VehicleJourney = React.lazy(() => import('./pages/VehicleJourney/index'));
+const VehicleJourneyPage = React.lazy(() => import('./pages/VehicleJourney/VehicleJourneyPage'));
 const Procurement = VehicleJourney;
 const DealDesk = VehicleJourney;
 const FniLogistics = VehicleJourney;
@@ -69,6 +70,7 @@ const App: React.FC = () => {
                       <Route path="deal-desk" element={<DealDesk />} />
                       <Route path="fni" element={<FniLogistics />} />
                       <Route path="vehicle-journey" element={<VehicleJourney />} />
+                      <Route path="vehicle-journey/:dealId" element={<VehicleJourneyPage />} />
                       <Route path="sales" element={<Leads />} />
                       <Route path="inventory" element={<Inventory />} />
                       <Route path="customer-registry" element={<CustomerRegistry />} />
