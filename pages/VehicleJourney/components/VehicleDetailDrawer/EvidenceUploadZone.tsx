@@ -13,56 +13,56 @@ export interface EvidenceConfig {
 // ─── STATE EVIDENCE MAP ──────────────────────────────────────────────────────
 export const STATE_EVIDENCE_MAP: Record<string, EvidenceConfig[]> = {
   PO_ISSUED: [
-    { key: 'proforma_invoice', label: 'Proforma Invoice (PI)', description: 'Upload official PI PDF from manufacturer / importer', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'proforma_invoice', label: 'Proforma Invoice (PI)', description: 'Upload official PI PDF from manufacturer / importer', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   LC_OPENED: [
-    { key: 'lc_copy', label: 'Letter of Credit (LC) Copy', description: 'Upload bank issued LC copy', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'lc_copy', label: 'Letter of Credit (LC) Copy', description: 'Upload bank issued LC copy', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   RECEIVED: [
-    { key: 'grn_document', label: 'Goods Received Note (GRN)', description: 'Upload signed GRN & yard intake report', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'grn_document', label: 'Goods Received Note (GRN)', description: 'Upload signed GRN & yard intake report', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   IN_STOCK: [
-    { key: 'grn_document', label: 'Goods Received Note (GRN)', description: 'Yard inspection & GRN proof', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'grn_document', label: 'Goods Received Note (GRN)', description: 'Yard inspection & GRN proof', required: false, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   BOOKED: [
-    { key: 'booking_slip',          label: 'Booking Slip / Token Receipt',       description: 'Upload signed booking slip & token deposit proof',                         required: true,  allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'citizenship_copy',      label: 'Customer Citizenship Copy',           description: 'Nepali citizenship certificate — front & back scan',                      required: true,  allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'pan_copy',              label: 'Customer PAN Card Copy',              description: 'Customer PAN (Permanent Account Number) certificate',                     required: true,  allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & specimen signature — needed for Bluebook & Bank Allotment', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'booking_slip',          label: 'Booking Slip / Token Receipt',       description: 'Upload signed booking slip & token deposit proof',                         required: true,  allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'citizenship_copy',      label: 'Customer Citizenship Copy',           description: 'Nepali citizenship certificate — front & back scan',                      required: true,  allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'pan_copy',              label: 'Customer PAN Card Copy',              description: 'Customer PAN (Permanent Account Number) certificate',                     required: true,  allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & specimen signature — needed for Bluebook & Bank Allotment', required: false, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   ALLOCATED: [
     // No documents required — allocation is purely linking a vehicle to a booking
   ],
   PAYMENT_STRUCTURED: [
-    { key: 'bank_do', label: 'Bank Delivery Order (DO)', description: 'Upload official DO from financing bank', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'down_payment_receipt', label: 'Down Payment Bank Deposit Slip', description: 'Upload customer margin money payment proof', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'bank_voucher_cheque', label: 'Bank Voucher / Cheque Copy', description: 'Audit proof that customer deposited minimum 20%/50% margin money before bank DO activation', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'bank_do', label: 'Bank Delivery Order (DO)', description: 'Upload official DO from financing bank', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'down_payment_receipt', label: 'Down Payment Bank Deposit Slip', description: 'Upload customer margin money payment proof', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'bank_voucher_cheque', label: 'Bank Voucher / Cheque Copy', description: 'Audit proof that customer deposited minimum 20%/50% margin money before bank DO activation', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   BANK_ALLOTMENT: [
-    { key: 'allotment_letter', label: 'Bank Allotment Letter', description: 'Upload signed allotment advice issued to bank', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'allotment_letter', label: 'Bank Allotment Letter', description: 'Upload signed allotment advice issued to bank', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   READY_FOR_DELIVERY: [
-    { key: 'pdi_report', label: 'PDI Inspection Checklist Report', description: 'Upload signed 50-point PDI checklist', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'ev_charger_certificate', label: 'EV Charger Handover Certificate (EV Only)', description: 'Handover checklist for 7kW AC Home Wallbox & Portable Charger — EV models only', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'pdi_report', label: 'PDI Inspection Checklist Report', description: 'Upload signed 50-point PDI checklist', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'ev_charger_certificate', label: 'EV Charger Handover Certificate (EV Only)', description: 'Handover checklist for 7kW AC Home Wallbox & Portable Charger — EV models only', required: false, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   DELIVERED: [
-    { key: 'delivery_challan', label: 'Signed Delivery Challan', description: 'Upload customer signed physical delivery receipt', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'delivery_challan', label: 'Signed Delivery Challan', description: 'Upload customer signed physical delivery receipt', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'vat_invoice', label: 'VAT Sales Invoice (Abhibhuti / Kar Bijak)', description: 'Upload VAT invoice — required for DoTM registration & tax compliance', required: false, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   INSURANCE_ACTIVATION: [
-    { key: 'insurance_policy', label: 'Insurance Policy / Cover Note', description: 'Upload comprehensive 1st-party insurance policy', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'insurance_policy', label: 'Insurance Policy / Cover Note', description: 'Upload comprehensive 1st-party insurance policy', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   DOTM_REGISTRATION: [
-    { key: 'bluebook_photo', label: 'DoTM Bluebook Photo / Scan', description: 'Upload photo of physical registration bluebook', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'pragyapan_patra', label: 'Customs Declaration / Pragyapan Patra', description: 'DoTM requires Customs Import Clearance copy for 1st-time vehicle registration in Nepal', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'dafa_form', label: 'Dafa / Excise Tax Form', description: 'Upload DoTM Dafa tax clearance receipt', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'bluebook_photo', label: 'DoTM Bluebook Photo / Scan', description: 'Upload photo of physical registration bluebook', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'pragyapan_patra', label: 'Customs Declaration / Pragyapan Patra', description: 'DoTM requires Customs Import Clearance copy for 1st-time vehicle registration in Nepal', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' },
+    { key: 'dafa_form', label: 'Dafa / Excise Tax Form', description: 'Upload DoTM Dafa tax clearance receipt', required: false, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   INSURANCE_ENDORSEMENT: [
-    { key: 'endorsed_insurance', label: 'Endorsed Insurance Policy', description: 'Upload policy with Bank Hire Purchase Endorsement', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'endorsed_insurance', label: 'Endorsed Insurance Policy', description: 'Upload policy with Bank Hire Purchase Endorsement', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ],
   BANK_DISBURSEMENT: [
-    { key: 'disbursement_advice', label: 'Bank Disbursement Advice / Payment Proof', description: 'Upload released bank loan disbursement slip', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'disbursement_advice', label: 'Bank Disbursement Advice / Payment Proof', description: 'Upload released bank loan disbursement slip', required: true, allowedTypes: '.pdf,.jpg,.jpeg,.png' }
   ]
 };
 
