@@ -182,26 +182,26 @@ const InlineDocUploadRow: React.FC<{
   };
 
   return (
-    <div className={`flex items-center gap-2 pl-6 pr-2 py-1.5 rounded-lg ${
-      uploaded ? 'bg-emerald-50' : 'bg-red-50/60'
+    <div className={`flex items-center gap-2 pl-6 pr-2 py-1.5 rounded-lg border ${
+      uploaded ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'
     }`}>
       <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-        uploaded ? 'bg-emerald-400' : 'bg-red-400'
+        uploaded ? 'bg-emerald-500' : 'bg-red-500'
       }`} />
-      <span className={`text-[11px] flex-1 font-medium ${
-        uploaded ? 'text-emerald-700' : 'text-red-700'
+      <span className={`text-[11px] flex-1 font-semibold ${
+        uploaded ? 'text-emerald-900' : 'text-red-900'
       }`}>{cfg.label}</span>
       {uploading ? (
-        <div className="flex items-center gap-1 text-[10px] text-deepal-600 font-bold">
+        <div className="flex items-center gap-1 text-[10px] text-deepal-700 font-bold">
           <Loader2 size={11} className="animate-spin" />
           Uploading…
         </div>
       ) : uploaded ? (
-        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+        <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
           <CheckCircle2 size={11} /> Uploaded
         </span>
       ) : (
-        <label className="flex items-center gap-1 text-[10px] font-bold text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-lg cursor-pointer transition active:scale-95">
+        <label className="flex items-center gap-1 text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-lg cursor-pointer shadow-sm transition active:scale-95">
           <Upload size={10} />
           Upload
           <input
@@ -234,24 +234,24 @@ const AllStagesDocHealth: React.FC<{ currentState: string; dealId: string }> = (
   }, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-200 p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white rounded-2xl border border-surface-200 p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-100">
         <div className="flex items-center gap-2">
-          <Shield size={13} className="text-deepal-500" />
-          <p className="text-[9px] font-bold text-surface-500 uppercase tracking-wider">All Stages — Document Health</p>
+          <Shield size={14} className="text-deepal-600" />
+          <p className="text-[10px] font-bold text-surface-700 uppercase tracking-wider">All Stages — Document Health</p>
         </div>
         {totalMissingCount > 0 ? (
-          <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">
             {totalMissingCount} missing
           </span>
         ) : (
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
             ✓ All docs complete
           </span>
         )}
       </div>
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {completedAndActive.map(stage => {
           const requiredConfigs = (STATE_EVIDENCE_MAP[stage.id] || []).filter(c => c.required);
           const missingConfigs = requiredConfigs.filter(cfg => !localStorage.getItem(`evidence_${dealId}_${cfg.key}`));
@@ -264,58 +264,58 @@ const AllStagesDocHealth: React.FC<{ currentState: string; dealId: string }> = (
             <div key={stage.id + refreshTick}>
               <button
                 onClick={() => hasDocs ? toggle(stage.id) : undefined}
-                className={`w-full flex items-center gap-2 px-2 py-2 rounded-xl transition-colors text-left ${
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors text-left ${
                   isActive
-                    ? 'bg-deepal-50 hover:bg-deepal-100'
+                    ? 'bg-deepal-50 border border-deepal-200'
                     : missingConfigs.length > 0
-                    ? 'hover:bg-red-50/50'
-                    : 'hover:bg-surface-50'
+                    ? 'bg-red-50/40 hover:bg-red-50/80 border border-red-100'
+                    : 'hover:bg-surface-50 border border-transparent'
                 } ${hasDocs ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 {/* Status icon */}
                 <div className="flex-shrink-0">
                   {!hasDocs ? (
-                    <Circle size={13} className="text-surface-300" />
+                    <Circle size={13} className="text-surface-400" />
                   ) : missingConfigs.length > 0 ? (
-                    <AlertCircle size={13} className="text-red-500" />
+                    <AlertCircle size={14} className="text-red-500" />
                   ) : (
-                    <CheckCircle2 size={13} className="text-emerald-500" />
+                    <CheckCircle2 size={14} className="text-emerald-600" />
                   )}
                 </div>
 
                 {/* Stage label */}
-                <span className={`text-[11px] font-semibold flex-1 ${
-                  isActive ? 'text-deepal-700' :
-                  missingConfigs.length > 0 ? 'text-red-700' :
-                  allUploaded ? 'text-emerald-700' : 'text-surface-500'
+                <span className={`text-[12px] flex-1 ${
+                  isActive ? 'font-bold text-deepal-900' :
+                  missingConfigs.length > 0 ? 'font-bold text-red-800' :
+                  allUploaded ? 'font-bold text-emerald-800' : 'font-semibold text-surface-700'
                 }`}>
                   {stage.label}
                 </span>
 
                 {/* Badge */}
                 {isActive && (
-                  <span className="text-[9px] font-bold text-deepal-600 bg-deepal-100 px-1.5 py-0.5 rounded-full">current</span>
+                  <span className="text-[9px] font-bold text-deepal-700 bg-deepal-100 border border-deepal-200 px-1.5 py-0.5 rounded-full">current</span>
                 )}
                 {missingConfigs.length > 0 && (
-                  <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded-full">
                     {missingConfigs.length} missing
                   </span>
                 )}
                 {allUploaded && (
-                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">✓ done</span>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓ done</span>
                 )}
 
                 {/* Expand chevron */}
                 {hasDocs && (
-                  <div className="text-surface-400 flex-shrink-0">
-                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  <div className="text-surface-500 flex-shrink-0">
+                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                   </div>
                 )}
               </button>
 
               {/* Expanded: show each document with status + upload button */}
               {hasDocs && isExpanded && (
-                <div className="mt-0.5 mb-1 space-y-0.5">
+                <div className="mt-1 mb-1.5 space-y-1">
                   {requiredConfigs.map(cfg => (
                     <InlineDocUploadRow
                       key={cfg.key}
@@ -331,15 +331,16 @@ const AllStagesDocHealth: React.FC<{ currentState: string; dealId: string }> = (
           );
         })}
 
-        {/* Future stages — collapsed, greyed out */}
+        {/* Future stages — high contrast dark text */}
         {future.length > 0 && (
           <>
-            <div className="border-t border-surface-100 my-2" />
+            <div className="border-t border-surface-200 my-2.5" />
+            <p className="text-[9px] font-bold text-surface-500 uppercase tracking-wider px-2 mb-1">Upcoming Stages</p>
             {future.map(stage => (
-              <div key={stage.id} className="flex items-center gap-2 px-2 py-1.5 opacity-40">
-                <Circle size={12} className="text-surface-300 flex-shrink-0" />
-                <span className="text-[11px] text-surface-400 flex-1">{stage.label}</span>
-                <span className="text-[9px] text-surface-300">upcoming</span>
+              <div key={stage.id} className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-surface-50">
+                <Circle size={13} className="text-surface-400 flex-shrink-0" />
+                <span className="text-[12px] font-semibold text-surface-700 flex-1">{stage.label}</span>
+                <span className="text-[9px] font-semibold text-surface-500 bg-surface-100 border border-surface-200 px-2 py-0.5 rounded-full">upcoming</span>
               </div>
             ))}
           </>
