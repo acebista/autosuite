@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useProformaInvoices, useCreatePI, useCreateLC, useInventory, useUpdateVehicle, useTransitionState, supabase } from '../api';
 import { PageHeader, Card, Badge, Button, MetricCard, Skeleton } from '../UI';
 import { Package, ShieldCheck, Truck, ClipboardList, CheckCircle2, AlertTriangle, Calendar, Plus, ExternalLink, RefreshCw, Send, ArrowRight } from 'lucide-react';
@@ -52,6 +52,12 @@ const Procurement: React.FC = () => {
   const activeLCs = pis.filter(p => p.lc).length;
   const transitCount = vehicles.filter(v => v.vehicleState === 'IN_TRANSIT').length;
   
+  // DB Catalog (fallback to PRODUCT_CATALOG if empty)
+  const activeCatalog = useMemo(() => {
+    const dbCatalog = vehicles.filter(v => v.vin && v.vin.startsWith('CAT-'));
+    return dbCatalog.length > 0 ? dbCatalog : PRODUCT_CATALOG;
+  }, [vehicles]);
+
   const lcAgingHealth = (() => {
     const lcs = pis.map(p => p.lc).filter(Boolean);
     if (!lcs.length) return 100;
@@ -131,9 +137,9 @@ const Procurement: React.FC = () => {
           lc_no: pi?.lc?.lcNumber || '',
           motor_no: engineNo || '',
           year: 2025,
-          fuel_type: PRODUCT_CATALOG.find(c => c.model === vModel && c.variant === vVariant)?.fuelType || 'EV',
+          fuel_type: activeCatalog.find(c => c.model === vModel && c.variant === vVariant)?.fuelType || 'EV',
           image_url: (() => {
-            const catalogItem = PRODUCT_CATALOG.find(c => c.model === vModel && c.variant === vVariant);
+            const catalogItem = activeCatalog.find(c => c.model === vModel && c.variant === vVariant);
             const colorItem = catalogItem?.availableColors?.find(col => col.color === vColor);
             return colorItem?.image || catalogItem?.image || '';
           })(),
@@ -704,9 +710,9 @@ const Procurement: React.FC = () => {
 
       {/* Vehicle Add Modal */}
       {showVehicleModal && (() => {
-        const catalogModels = Array.from(new Set(PRODUCT_CATALOG.map(v => v.model)));
+        const catalogModels = Array.from(new Set(activeCatalog.map(v => v.model)));
         const activeModels = catalogModels.length > 0 ? catalogModels : ['Deepal S07', 'Deepal L07', 'Deepal E07', 'Deepal S05'];
-        const variantsForModel = PRODUCT_CATALOG.filter(v => v.model === vModel);
+        const variantsForModel = activeCatalog.filter(v => v.model === vModel);
 
         const handleModelChangeLocal = (model: string) => {
           setVModel(model);
@@ -715,7 +721,7 @@ const Procurement: React.FC = () => {
         };
 
         const handleVariantChangeLocal = (variant: string) => {
-          const selected = PRODUCT_CATALOG.find(v => v.model === vModel && v.variant === variant);
+          const selected = activeCatalog.find(v => v.model === vModel && v.variant === variant);
           if (selected) {
             setVVariant(variant);
             setVPrice(selected.price.toString());
