@@ -103,6 +103,7 @@ const STATE_CONFIG: Record<string, StateConfig & { relevantDocType: BottleneckIn
 };
 
 function deriveBlockers(selectedItem: any): Blocker[] {
+  if (!selectedItem) return [];
   const deal = selectedItem.rawDeal || {};
   const state = selectedItem.state;
   const all: Blocker[] = [];
@@ -127,21 +128,40 @@ function deriveBlockers(selectedItem: any): Blocker[] {
 
 function deriveHealthColor(selectedItem: any, urgency: 'normal' | 'warning' | 'critical'): 'green' | 'yellow' | 'red' {
   if (urgency === 'critical') return 'red';
-  if (selectedItem.daysInStock > 90) return 'red';
-  if (urgency === 'warning' || selectedItem.daysInStock > 60) return 'yellow';
+  const days = selectedItem?.daysInStock ?? 0;
+  if (days > 90) return 'red';
+  if (urgency === 'warning' || days > 60) return 'yellow';
   return 'green';
 }
 
 function deriveUrgency(state: string, selectedItem: any): 'normal' | 'warning' | 'critical' {
-  if (selectedItem.daysInStock > 90) return 'critical';
+  const days = selectedItem?.daysInStock ?? 0;
+  if (days > 90) return 'critical';
   if (['DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT'].includes(state)) return 'critical';
-  if (['DELIVERED', 'INSURANCE_ACTIVATION', 'BANK_ALLOTMENT'].includes(state) || selectedItem.daysInStock > 60) return 'warning';
+  if (['DELIVERED', 'INSURANCE_ACTIVATION', 'BANK_ALLOTMENT'].includes(state) || days > 60) return 'warning';
   return 'normal';
 }
 
 export function useBottleneck(selectedItem: any): BottleneckInfo {
   return useMemo(() => {
-    const state = selectedItem?.state || 'IN_STOCK';
+    // Guard: return safe defaults while data is loading (selectedItem is null)
+    if (!selectedItem) {
+      return {
+        title: 'Loading…',
+        emoji: '⏳',
+        description: '',
+        stepNumber: 0,
+        totalSteps: 0,
+        urgency: 'normal',
+        healthColor: 'green',
+        healthScore: 0,
+        awaitingText: '',
+        relevantDocType: null,
+        blockers: [],
+      };
+    }
+
+    const state = selectedItem.state || 'IN_STOCK';
     const config = STATE_CONFIG[state] || STATE_CONFIG.IN_STOCK;
     const meta = STATE_METADATA[state as keyof typeof STATE_METADATA];
     const healthScore = meta?.progress ?? 0;
@@ -160,3 +180,4 @@ export function useBottleneck(selectedItem: any): BottleneckInfo {
     };
   }, [selectedItem?.state, selectedItem?.rawDeal, selectedItem?.daysInStock]);
 }
+
