@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, CheckCircle2, AlertCircle, Circle, Printer,
+  ArrowLeft, CheckCircle2, AlertCircle, Circle,
   FileText, User, Clock, ChevronRight, Zap, Shield,
+  ChevronDown, ChevronUp, Upload, Loader2,
 } from 'lucide-react';
 import { ToastProvider, useToast } from '../../UI';
 import { useVehicleJourneyData } from './hooks/useVehicleJourneyData';
@@ -10,9 +11,9 @@ import { useActionForms } from './hooks/useActionForms';
 import { useBottleneck } from './hooks/useBottleneck';
 import { LeftActionPanel } from './components/VehicleDetailDrawer/LeftActionPanel';
 import { ComplianceAuditTrail } from './components/VehicleDetailDrawer/ComplianceAuditTrail';
-import { STATE_EVIDENCE_MAP, getMissingEvidenceLabels } from './components/VehicleDetailDrawer/EvidenceUploadZone';
+import { STATE_EVIDENCE_MAP, getMissingEvidenceLabels, EvidenceConfig } from './components/VehicleDetailDrawer/EvidenceUploadZone';
+import { uploadToR2, buildR2Path, resolveR2Url } from '../../services/r2Upload';
 import { STATE_METADATA } from '../../lib/stateMachine';
-import { useDealSteps } from '../../api';
 
 // ─── All stages in order ────────────────────────────────────────────────────
 const ALL_STAGES = [
@@ -153,17 +154,82 @@ const JourneyStageSidebar: React.FC<{
   );
 };
 
+// ─── Inline Upload Row (used inside AllStagesDocHealth) ──────────────────────
+const InlineDocUploadRow: React.FC<{
+  cfg: EvidenceConfig;
+  dealId: string;
+  stageId: string;
+  onUploaded: () => void;
+}> = ({ cfg, dealId, stageId, onUploaded }) => {
+  const [uploading, setUploading] = useState(false);
+  const existing = localStorage.getItem(`evidence_${dealId}_${cfg.key}`);
+  const [uploaded, setUploaded] = useState(!!existing);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const path = buildR2Path('org-default', dealId, stageId, cfg.key, file);
+      const r2Url = await uploadToR2(file, path);
+      localStorage.setItem(`evidence_${dealId}_${cfg.key}`, r2Url);
+      setUploaded(true);
+      onUploaded();
+    } catch (err: any) {
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className={`flex items-center gap-2 pl-6 pr-2 py-1.5 rounded-lg ${
+      uploaded ? 'bg-emerald-50' : 'bg-red-50/60'
+    }`}>
+      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+        uploaded ? 'bg-emerald-400' : 'bg-red-400'
+      }`} />
+      <span className={`text-[11px] flex-1 font-medium ${
+        uploaded ? 'text-emerald-700' : 'text-red-700'
+      }`}>{cfg.label}</span>
+      {uploading ? (
+        <div className="flex items-center gap-1 text-[10px] text-deepal-600 font-bold">
+          <Loader2 size={11} className="animate-spin" />
+          Uploading…
+        </div>
+      ) : uploaded ? (
+        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+          <CheckCircle2 size={11} /> Uploaded
+        </span>
+      ) : (
+        <label className="flex items-center gap-1 text-[10px] font-bold text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-lg cursor-pointer transition active:scale-95">
+          <Upload size={10} />
+          Upload
+          <input
+            type="file"
+            accept={cfg.allowedTypes}
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          />
+        </label>
+      )}
+    </div>
+  );
+};
+
 // ─── Document Health Panel ───────────────────────────────────────────────────
 const AllStagesDocHealth: React.FC<{ currentState: string; dealId: string }> = ({ currentState, dealId }) => {
   const order = ALL_STAGES.map(s => s.id);
   const currentIdx = order.indexOf(currentState);
   const completedAndActive = ALL_STAGES.slice(0, currentIdx + 1);
   const future = ALL_STAGES.slice(currentIdx + 1);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const toggle = (id: string) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  const refresh = useCallback(() => setRefreshTick(t => t + 1), []);
 
   const totalMissingCount = completedAndActive.reduce((acc, stage) => {
-    const hasDocs = (STATE_EVIDENCE_MAP[stage.id] || []).filter(c => c.required).length > 0;
-    if (!hasDocs) return acc;
-    return acc + getMissingEvidenceLabels(stage.id, dealId).length;
+    const configs = (STATE_EVIDENCE_MAP[stage.id] || []).filter(c => c.required);
+    return acc + configs.filter(cfg => !localStorage.getItem(`evidence_${dealId}_${cfg.key}`)).length;
   }, 0);
 
   return (
@@ -179,50 +245,100 @@ const AllStagesDocHealth: React.FC<{ currentState: string; dealId: string }> = (
           </span>
         ) : (
           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-            All OK
+            ✓ All docs complete
           </span>
         )}
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {completedAndActive.map(stage => {
-          const hasDocs = (STATE_EVIDENCE_MAP[stage.id] || []).filter(c => c.required).length > 0;
-          const missing = hasDocs ? getMissingEvidenceLabels(stage.id, dealId) : [];
+          const requiredConfigs = (STATE_EVIDENCE_MAP[stage.id] || []).filter(c => c.required);
+          const missingConfigs = requiredConfigs.filter(cfg => !localStorage.getItem(`evidence_${dealId}_${cfg.key}`));
+          const hasDocs = requiredConfigs.length > 0;
           const isActive = stage.id === currentState;
+          const isExpanded = expanded[stage.id] ?? (missingConfigs.length > 0 && !isActive);
+          const allUploaded = hasDocs && missingConfigs.length === 0;
 
           return (
-            <div key={stage.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isActive ? 'bg-deepal-50' : ''}`}>
-              {!hasDocs ? (
-                <Circle size={12} className="text-surface-300 flex-shrink-0" />
-              ) : missing.length > 0 ? (
-                <AlertCircle size={12} className="text-red-500 flex-shrink-0" />
-              ) : (
-                <CheckCircle2 size={12} className="text-emerald-500 flex-shrink-0" />
-              )}
-              <span className={`text-[11px] font-medium flex-1 ${isActive ? 'text-deepal-700 font-bold' : 'text-surface-600'}`}>
-                {stage.label}
-              </span>
-              {missing.length > 0 && (
-                <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
-                  {missing.length} missing
+            <div key={stage.id + refreshTick}>
+              <button
+                onClick={() => hasDocs ? toggle(stage.id) : undefined}
+                className={`w-full flex items-center gap-2 px-2 py-2 rounded-xl transition-colors text-left ${
+                  isActive
+                    ? 'bg-deepal-50 hover:bg-deepal-100'
+                    : missingConfigs.length > 0
+                    ? 'hover:bg-red-50/50'
+                    : 'hover:bg-surface-50'
+                } ${hasDocs ? 'cursor-pointer' : 'cursor-default'}`}
+              >
+                {/* Status icon */}
+                <div className="flex-shrink-0">
+                  {!hasDocs ? (
+                    <Circle size={13} className="text-surface-300" />
+                  ) : missingConfigs.length > 0 ? (
+                    <AlertCircle size={13} className="text-red-500" />
+                  ) : (
+                    <CheckCircle2 size={13} className="text-emerald-500" />
+                  )}
+                </div>
+
+                {/* Stage label */}
+                <span className={`text-[11px] font-semibold flex-1 ${
+                  isActive ? 'text-deepal-700' :
+                  missingConfigs.length > 0 ? 'text-red-700' :
+                  allUploaded ? 'text-emerald-700' : 'text-surface-500'
+                }`}>
+                  {stage.label}
                 </span>
-              )}
-              {isActive && (
-                <span className="text-[9px] font-bold text-deepal-600 bg-deepal-100 px-1.5 py-0.5 rounded-full">current</span>
+
+                {/* Badge */}
+                {isActive && (
+                  <span className="text-[9px] font-bold text-deepal-600 bg-deepal-100 px-1.5 py-0.5 rounded-full">current</span>
+                )}
+                {missingConfigs.length > 0 && (
+                  <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                    {missingConfigs.length} missing
+                  </span>
+                )}
+                {allUploaded && (
+                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">✓ done</span>
+                )}
+
+                {/* Expand chevron */}
+                {hasDocs && (
+                  <div className="text-surface-400 flex-shrink-0">
+                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </div>
+                )}
+              </button>
+
+              {/* Expanded: show each document with status + upload button */}
+              {hasDocs && isExpanded && (
+                <div className="mt-0.5 mb-1 space-y-0.5">
+                  {requiredConfigs.map(cfg => (
+                    <InlineDocUploadRow
+                      key={cfg.key}
+                      cfg={cfg}
+                      dealId={dealId}
+                      stageId={stage.id}
+                      onUploaded={refresh}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           );
         })}
 
-        {/* Future stages */}
+        {/* Future stages — collapsed, greyed out */}
         {future.length > 0 && (
           <>
-            <div className="border-t border-surface-100 my-1" />
+            <div className="border-t border-surface-100 my-2" />
             {future.map(stage => (
-              <div key={stage.id} className="flex items-center gap-2 px-2 py-1">
-                <Circle size={12} className="text-surface-200 flex-shrink-0" />
-                <span className="text-[11px] text-surface-300">{stage.label}</span>
-                <span className="text-[9px] text-surface-300 ml-auto">upcoming</span>
+              <div key={stage.id} className="flex items-center gap-2 px-2 py-1.5 opacity-40">
+                <Circle size={12} className="text-surface-300 flex-shrink-0" />
+                <span className="text-[11px] text-surface-400 flex-1">{stage.label}</span>
+                <span className="text-[9px] text-surface-300">upcoming</span>
               </div>
             ))}
           </>

@@ -30,7 +30,7 @@ export const STATE_EVIDENCE_MAP: Record<string, EvidenceConfig[]> = {
     { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & signature — required for Bluebook application & Bank Allotment file', required: true, allowedTypes: '.pdf,.jpg,.png' }
   ],
   ALLOCATED: [
-    { key: 'allocation_note', label: 'VIN Allotment Slip (Optional)', description: 'Internal stock allocation confirmation', required: false, allowedTypes: '.pdf,.jpg,.png' }
+    // No documents required — allocation is purely linking a vehicle to a booking
   ],
   PAYMENT_STRUCTURED: [
     { key: 'bank_do', label: 'Bank Delivery Order (DO)', description: 'Upload official DO from financing bank', required: true, allowedTypes: '.pdf,.jpg,.png' },
