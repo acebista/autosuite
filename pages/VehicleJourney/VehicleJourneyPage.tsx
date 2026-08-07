@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, CheckCircle2, AlertCircle, Circle,
   FileText, User, Clock, ChevronRight, Zap, Shield,
-  ChevronDown, ChevronUp, Upload, Loader2,
+  ChevronDown, ChevronUp, Upload, Loader2, Printer, X,
 } from 'lucide-react';
+import { DocumentsVault } from '../../components/DocumentsVault';
 import { ToastProvider, useToast } from '../../UI';
 import { useVehicleJourneyData } from './hooks/useVehicleJourneyData';
 import { useActionForms } from './hooks/useActionForms';
@@ -367,10 +368,11 @@ function resolveColor(name: string): string {
 const TopHUDBar: React.FC<{
   item: any;
   onBack: () => void;
+  onOpenPrintVault: () => void;
   healthScore: number;
   healthColor: 'green' | 'yellow' | 'red';
   awaitingText: string;
-}> = ({ item, onBack, healthScore, healthColor, awaitingText }) => {
+}> = ({ item, onBack, onOpenPrintVault, healthScore, healthColor, awaitingText }) => {
   const vehicleColor = resolveColor(item.color || '');
   const BADGE = {
     green:  { bg: 'bg-emerald-500', label: 'On Track' },
@@ -457,6 +459,15 @@ const TopHUDBar: React.FC<{
         </div>
         <span className="text-[8px] font-bold text-emerald-400/70 uppercase">Live</span>
       </div>
+
+      {/* Print Documents Button */}
+      <button
+        onClick={onOpenPrintVault}
+        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-deepal-500 hover:bg-deepal-600 active:scale-95 text-white text-xs font-bold shadow transition-all flex-shrink-0"
+      >
+        <Printer size={13} />
+        <span className="hidden sm:inline">Print Docs</span>
+      </button>
     </div>
   );
 };
@@ -466,6 +477,7 @@ function VehicleJourneyPageInner() {
   const { dealId } = useParams<{ dealId: string }>();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const [showPrintVaultModal, setShowPrintVaultModal] = useState(false);
 
   const journeyData = useVehicleJourneyData('', 'ALL');
 
@@ -527,6 +539,7 @@ function VehicleJourneyPageInner() {
       <TopHUDBar
         item={selectedItem}
         onBack={() => navigate('/vehicle-journey')}
+        onOpenPrintVault={() => setShowPrintVaultModal(true)}
         healthScore={bottleneck.healthScore}
         healthColor={bottleneck.healthColor}
         awaitingText={bottleneck.awaitingText}
@@ -589,6 +602,27 @@ function VehicleJourneyPageInner() {
               dealId={selectedItem.id}
             />
 
+            {/* Print Document Vault Card */}
+            <div className="bg-gradient-to-br from-deepal-950 via-surface-900 to-deepal-900 rounded-2xl p-4 text-white shadow-md border border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Printer size={15} className="text-deepal-400" />
+                  <h4 className="text-xs font-bold font-display uppercase tracking-wider text-white">Print Document Vault</h4>
+                </div>
+                <span className="text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-mono">Official Letterhead</span>
+              </div>
+              <p className="text-[11px] text-white/60 mb-3 leading-relaxed">
+                Generate printable official PDFs: Booking Receipt, Allotment Letter, DoTM Form, Insurance Request & Gate Pass.
+              </p>
+              <button
+                onClick={() => setShowPrintVaultModal(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-deepal-500 hover:bg-deepal-600 text-white text-xs font-bold shadow transition active:scale-95"
+              >
+                <Printer size={13} />
+                Open Print Vault
+              </button>
+            </div>
+
             {/* Audit Trail — full expanded version */}
             <div className="bg-surface-950 rounded-2xl border border-surface-800 overflow-hidden">
               <div className="px-4 pt-4 pb-2">
@@ -600,6 +634,46 @@ function VehicleJourneyPageInner() {
           </div>
         </aside>
       </div>
+
+      {/* ── Print Document Vault Modal ───────────────────────────────── */}
+      {showPrintVaultModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/80 animate-fade-in p-4"
+          onClick={() => setShowPrintVaultModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-elevated w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden animate-scale-in border border-surface-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 bg-surface-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-deepal-50 flex items-center justify-center border border-deepal-100">
+                  <Printer size={20} className="text-deepal-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-surface-900 font-display">Print Document Vault</h3>
+                  <p className="text-xs text-surface-500">Official letterhead templates for {selectedItem.model}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPrintVaultModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-surface-200 flex items-center justify-center transition-colors text-surface-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto">
+              <DocumentsVault
+                selectedItem={selectedItem}
+                pi={linkedPI}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
