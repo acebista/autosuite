@@ -25,9 +25,10 @@ export const STATE_EVIDENCE_MAP: Record<string, EvidenceConfig[]> = {
     { key: 'grn_document', label: 'Goods Received Note (GRN)', description: 'Yard inspection & GRN proof', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   BOOKED: [
-    { key: 'booking_slip', label: 'Booking Slip / Token Receipt', description: 'Upload signed booking slip & deposit proof', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'customer_kyc', label: 'Customer Citizenship / PAN Copy', description: 'Individual Citizenship card OR Company PAN Certificate', required: true, allowedTypes: '.pdf,.jpg,.png' },
-    { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & signature — required for Bluebook application & Bank Allotment file', required: true, allowedTypes: '.pdf,.jpg,.png' }
+    { key: 'booking_slip',          label: 'Booking Slip / Token Receipt',       description: 'Upload signed booking slip & token deposit proof',                         required: true,  allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'citizenship_copy',      label: 'Customer Citizenship Copy',           description: 'Nepali citizenship certificate — front & back scan',                      required: true,  allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'pan_copy',              label: 'Customer PAN Card Copy',              description: 'Customer PAN (Permanent Account Number) certificate',                     required: true,  allowedTypes: '.pdf,.jpg,.png' },
+    { key: 'customer_photo_signature', label: 'Customer Photo & Signature Card', description: 'Passport-size photo & specimen signature — needed for Bluebook & Bank Allotment', required: false, allowedTypes: '.pdf,.jpg,.png' }
   ],
   ALLOCATED: [
     // No documents required — allocation is purely linking a vehicle to a booking
