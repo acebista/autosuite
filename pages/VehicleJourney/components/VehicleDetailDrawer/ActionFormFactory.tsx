@@ -197,6 +197,13 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
           )}
         </div>
         <FieldGroup columns={1}>
+          <Field label="Registration / Plate No. (Optional)" hint="Can enter now or leave blank to add at a later date">
+            <TextInput
+              value={forms.registrationNo}
+              onChange={e => forms.setRegistrationNo(e.target.value)}
+              placeholder="e.g. BA 1 JA 1234 (Optional)"
+            />
+          </Field>
           {notesField}
         </FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
@@ -221,6 +228,13 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
               type="date"
               value={forms.transitDate}
               onChange={e => forms.setTransitDate(e.target.value)}
+            />
+          </Field>
+          <Field label="Registration / Plate No. (Optional)" hint="Can enter now or leave blank to add at a later date" colSpan>
+            <TextInput
+              value={forms.registrationNo}
+              onChange={e => forms.setRegistrationNo(e.target.value)}
+              placeholder="e.g. BA 1 JA 1234 (Optional)"
             />
           </Field>
           {notesField}
@@ -262,6 +276,13 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
               onChange={e => forms.setChassisNo(e.target.value)}
               placeholder="Chassis No."
               readOnly={!!(selectedItem.vin && !selectedItem.vin.startsWith('CAT-'))}
+            />
+          </Field>
+          <Field label="Registration / Plate No. (Optional)" hint="Can enter now or leave blank to add at a later date" colSpan>
+            <TextInput
+              value={forms.registrationNo}
+              onChange={e => forms.setRegistrationNo(e.target.value)}
+              placeholder="e.g. BA 1 JA 1234 (Optional)"
             />
           </Field>
           {notesField}

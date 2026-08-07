@@ -56,6 +56,9 @@ export function useActionForms({
   // Pre-populate form fields when drawer opens for a card
   const populateFromCard = (card: any) => {
     setActionNotes('');
+    const existingReg = card.registrationNo || card.rawVehicle?.registrationNo || card.rawVehicle?.registration_no || card.rawDeal?.registrationNo || '';
+    setRegistrationNo(existingReg);
+
     if (card.entityType === 'VEHICLE') {
       setGrnNo(card.rawVehicle?.grnNumber || `GRN-${Date.now().toString().slice(-6)}`);
       setEngineNo(card.rawVehicle?.motorNo || '');
@@ -74,7 +77,8 @@ export function useActionForms({
       const existingIns = card.rawDeal?.insurancePolicyNo || '';
       setInsuranceNo(existingIns === 'PENDING_EMAIL_SENT' ? '' : existingIns);
       setWillUpdateInsuranceLater(existingIns === 'PENDING_EMAIL_SENT');
-      setRegistrationNo(card.rawDeal?.registrationNo || '');
+      const existingReg = card.registrationNo || card.rawDeal?.registrationNo || card.rawVehicle?.registrationNo || card.rawVehicle?.registration_no || '';
+      setRegistrationNo(existingReg);
       setDisbursementAmt(card.rawDeal?.disbursementAmount?.toString() || '');
     }
   };
@@ -84,6 +88,9 @@ export function useActionForms({
   // 1. PO_ISSUED → LC_OPENED
   const handleLinkLC = async () => {
     try {
+      if (registrationNo.trim()) {
+        await updateVehicleMutation.mutateAsync({ id: selectedItem.id, patch: { registrationNo: registrationNo.trim() } as any });
+      }
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'VEHICLE',
         fromState: 'PO_ISSUED', toState: 'LC_OPENED',
@@ -97,7 +104,9 @@ export function useActionForms({
   const handleMarkShipped = async () => {
     if (!transitDate) { err('Please set the expected delivery date.'); return; }
     try {
-      await updateVehicleMutation.mutateAsync({ id: selectedItem.id, patch: { expectedDeliveryDate: transitDate } as any });
+      const vPatch: any = { expectedDeliveryDate: transitDate };
+      if (registrationNo.trim()) vPatch.registrationNo = registrationNo.trim();
+      await updateVehicleMutation.mutateAsync({ id: selectedItem.id, patch: vPatch });
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'VEHICLE',
         fromState: 'LC_OPENED', toState: 'IN_TRANSIT',
@@ -112,9 +121,11 @@ export function useActionForms({
     e?.preventDefault();
     if (!grnNo || !engineNo || !chassisNo) { err('Please provide GRN, Engine, and Chassis numbers.'); return; }
     try {
+      const vPatch: any = { grnNumber: grnNo, motorNo: engineNo, vin: chassisNo, chassisNo, receivedAt: new Date().toISOString() };
+      if (registrationNo.trim()) vPatch.registrationNo = registrationNo.trim();
       await updateVehicleMutation.mutateAsync({
         id: selectedItem.id,
-        patch: { grnNumber: grnNo, motorNo: engineNo, vin: chassisNo, chassisNo, receivedAt: new Date().toISOString() } as any
+        patch: vPatch
       });
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'VEHICLE',
@@ -128,7 +139,9 @@ export function useActionForms({
   // 4. RECEIVED → IN_STOCK
   const handleApproveStock = async () => {
     try {
-      await updateVehicleMutation.mutateAsync({ id: selectedItem.id, patch: { status: 'In Stock' } });
+      const vPatch: any = { status: 'In Stock' };
+      if (registrationNo.trim()) vPatch.registrationNo = registrationNo.trim();
+      await updateVehicleMutation.mutateAsync({ id: selectedItem.id, patch: vPatch });
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'VEHICLE',
         fromState: 'RECEIVED', toState: 'IN_STOCK',

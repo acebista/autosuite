@@ -41,11 +41,12 @@ export function useVehicleJourneyData(searchQuery: string, filterState: string) 
     return dbCatalog.length > 0 ? dbCatalog : PRODUCT_CATALOG;
   }, [vehicles]);
 
-  // Group vehicles and deals into cohesive "journey cards"
+  // Group vehicles and deals into cohesive "journey cards" (excluding catalog templates)
   const journeyCards = useMemo(() => {
     const cards: any[] = [];
+    const actualVehicles = vehicles.filter(v => !v.vin || !v.vin.startsWith('CAT-'));
 
-    vehicles.forEach((vehicle) => {
+    actualVehicles.forEach((vehicle) => {
       const vState = (vehicle.vehicleState || 'IN_STOCK') as VehicleState;
       const linkedDeal = deals.find(d => d.vehicleId === vehicle.id);
 
