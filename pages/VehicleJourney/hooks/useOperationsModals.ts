@@ -59,6 +59,7 @@ export function useOperationsModals({
   const [vCostVal, setVCostVal] = useState('');
   const [vVinVal, setVVinVal] = useState('');
   const [vEngineNoVal, setVEngineNoVal] = useState('');
+  const [vRegistrationNoVal, setVRegistrationNoVal] = useState('');
   const [vPIIdVal, setVPIIdVal] = useState('');
 
   // ─── Booking Modal fields ──────────────────────────────────────────────
@@ -124,6 +125,7 @@ export function useOperationsModals({
         proforma_invoice_no: selectedPI?.piNumber || '',
         lc_no: selectedPI?.lc?.lcNumber || '',
         motor_no: vEngineNoVal || '', year: 2025,
+        registration_no: vRegistrationNoVal.trim() || null,
         fuel_type: activeCatalog.find((c: any) => c.model === vModelVal && c.variant === vVariantVal)?.fuelType || 'EV',
         image_url: (() => {
           const catalogItem = activeCatalog.find((c: any) => c.model === vModelVal && c.variant === vVariantVal);
@@ -140,7 +142,7 @@ export function useOperationsModals({
       });
       setShowVehicleModal(false);
       setVModelVal(''); setVVariantVal(''); setVColorVal(''); setVPriceVal('');
-      setVCostVal(''); setVVinVal(''); setVEngineNoVal(''); setVPIIdVal('');
+      setVCostVal(''); setVVinVal(''); setVEngineNoVal(''); setVRegistrationNoVal(''); setVPIIdVal('');
       refetchAll();
     } catch (e: any) { err('Error linking vehicle: ' + e.message); }
   };
@@ -210,7 +212,7 @@ export function useOperationsModals({
     vModelVal, setVModelVal, vVariantVal, setVVariantVal,
     vColorVal, setVColorVal, vPriceVal, setVPriceVal,
     vCostVal, setVCostVal, vVinVal, setVVinVal,
-    vEngineNoVal, setVEngineNoVal, vPIIdVal, setVPIIdVal,
+    vEngineNoVal, setVEngineNoVal, vRegistrationNoVal, setVRegistrationNoVal, vPIIdVal, setVPIIdVal,
     // Booking fields
     existCustId, setExistCustId, bookModel, setBookModel,
     bookColor, setBookColor, bookAmount, setBookAmount, bookPrice, setBookPrice,

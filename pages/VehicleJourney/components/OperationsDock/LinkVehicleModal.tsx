@@ -13,6 +13,7 @@ interface LinkVehicleModalProps {
   vCostVal: string; setVCostVal: (v: string) => void;
   vVinVal: string; setVVinVal: (v: string) => void;
   vEngineNoVal: string; setVEngineNoVal: (v: string) => void;
+  vRegistrationNoVal: string; setVRegistrationNoVal: (v: string) => void;
   vPIIdVal: string; setVPIIdVal: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading?: boolean;
@@ -23,7 +24,8 @@ export const LinkVehicleModal: React.FC<LinkVehicleModalProps> = ({
   vModelVal, setVModelVal, vVariantVal, setVVariantVal,
   vColorVal, setVColorVal, vPriceVal, setVPriceVal,
   vCostVal, setVCostVal, vVinVal, setVVinVal,
-  vEngineNoVal, setVEngineNoVal, vPIIdVal, setVPIIdVal,
+  vEngineNoVal, setVEngineNoVal, vRegistrationNoVal, setVRegistrationNoVal,
+  vPIIdVal, setVPIIdVal,
   onSubmit, isLoading
 }) => {
   if (!open) return null;
@@ -93,6 +95,11 @@ export const LinkVehicleModal: React.FC<LinkVehicleModalProps> = ({
               <label className="block text-xs font-bold text-surface-700 mb-1.5">Engine / Motor No.</label>
               <input type="text" value={vEngineNoVal} onChange={e => setVEngineNoVal(e.target.value)} placeholder="ENG-XXXXX"
                 className="w-full border border-surface-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-deepal-300" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-surface-700 mb-1.5">Registration / Plate No.</label>
+              <input type="text" value={vRegistrationNoVal} onChange={e => setVRegistrationNoVal(e.target.value)} placeholder="BA 1 JA 1234 (Optional)"
+                className="w-full border border-surface-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-deepal-300 font-mono" />
             </div>
             <div>
               <label className="block text-xs font-bold text-surface-700 mb-1.5">Retail Price (NPR)</label>

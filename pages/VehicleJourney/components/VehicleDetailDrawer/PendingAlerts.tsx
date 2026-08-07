@@ -33,13 +33,11 @@ export const PendingAlerts: React.FC<PendingAlertsProps> = ({
     });
   }
 
-  if (
-    ['DOTM_REGISTRATION', 'INSURANCE_ENDORSEMENT', 'BANK_DISBURSEMENT'].includes(selectedItem.state) &&
-    !selectedItem.rawDeal?.registrationNo
-  ) {
+  const existingRegNo = selectedItem.registrationNo || selectedItem.rawDeal?.registrationNo || selectedItem.rawVehicle?.registrationNo || selectedItem.rawVehicle?.registration_no;
+  if (!existingRegNo) {
     alerts.push({
       field: 'registration_no',
-      label: 'DoTM Registration Plate not recorded',
+      label: 'Vehicle Registration / Plate No. missing',
       currentValue: registrationNo,
       onUpdate: setRegistrationNo,
     });

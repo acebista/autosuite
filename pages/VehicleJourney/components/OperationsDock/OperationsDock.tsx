@@ -112,6 +112,7 @@ export const OperationsDock: React.FC<OperationsDockProps> = ({
         vCostVal={modals.vCostVal} setVCostVal={modals.setVCostVal}
         vVinVal={modals.vVinVal} setVVinVal={modals.setVVinVal}
         vEngineNoVal={modals.vEngineNoVal} setVEngineNoVal={modals.setVEngineNoVal}
+        vRegistrationNoVal={modals.vRegistrationNoVal} setVRegistrationNoVal={modals.setVRegistrationNoVal}
         vPIIdVal={modals.vPIIdVal} setVPIIdVal={modals.setVPIIdVal}
         onSubmit={modals.handleCreateVehicleSubmit}
         isLoading={modals.isModalLoading}

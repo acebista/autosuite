@@ -112,7 +112,13 @@ function buildEvidence(selectedItem: any, pis: any[]): EvidenceField[] {
       isPending: deal.insurancePolicyNo === 'PENDING_EMAIL_SENT',
     });
   }
-  if (deal.registrationNo) fields.push({ label: 'Plate No.', value: deal.registrationNo });
+  const regNo = selectedItem.registrationNo || deal.registrationNo || vehicle.registrationNo || vehicle.registration_no;
+  if (regNo) {
+    fields.push({ label: 'Plate No.', value: regNo });
+  } else {
+    fields.push({ label: 'Plate No.', value: '⚠️ Missing', isPending: true });
+  }
+
   if (deal.disbursementAmount) fields.push({ label: 'Disbursement', value: `NPR ${Number(deal.disbursementAmount).toLocaleString()}` });
 
   return fields;
