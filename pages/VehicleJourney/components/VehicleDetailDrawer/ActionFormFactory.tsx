@@ -528,6 +528,15 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
   if (state === 'DELIVERED') {
     return (
       <div className="space-y-4">
+        {/* Delivery confirmation banner */}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle2 size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-emerald-800">🎉 Vehicle Successfully Delivered!</p>
+            <p className="text-xs text-emerald-600 mt-0.5">The vehicle has been handed over to the customer. Complete the insurance activation below to continue the F&I compliance journey.</p>
+          </div>
+        </div>
+
         <Field label="Insurance Policy No." colSpan hint="Enter the policy number after receiving confirmation from the insurer.">
           <TextInput
             value={forms.insuranceNo}
@@ -548,7 +557,7 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA
-          label="Activate Insurance"
+          label="Activate Vehicle Insurance →"
           icon={ShieldCheck}
           onClick={forms.handleInsuranceActivate}
           isLoading={isActionLoading}
@@ -558,22 +567,30 @@ export const ActionFormFactory: React.FC<ActionFormFactoryProps> = ({ selectedIt
     );
   }
 
-  // ─── INSURANCE_ACTIVATION: Generate Allotment Letter ──────────────────
+  // ─── INSURANCE_ACTIVATION: Submit DoTM Registration ──────────────────
   if (state === 'INSURANCE_ACTIVATION') {
     return (
       <div className="space-y-4">
-        <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
-          <p className="text-sm font-bold text-violet-800 mb-1 flex items-center gap-2">
-            <FileText size={14} /> Bank Allotment Letter
-          </p>
-          <p className="text-xs text-violet-600">Generate and send the allotment letter to the financing bank. This progresses the deal into the bank's processing queue.</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <Stamp size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Insurance Activated — Register with DoTM</p>
+            <p className="text-xs text-amber-600 mt-0.5">Insurance is now active. Submit the DoTM vehicle registration to obtain the official number plate.</p>
+          </div>
         </div>
+        <Field label="Registration Plate No." hint="The plate number issued by DoTM after vehicle registration. Can be added later if not yet available." colSpan>
+          <TextInput
+            value={forms.registrationNo}
+            onChange={e => forms.setRegistrationNo(e.target.value)}
+            placeholder="e.g. BA 1 JA 1234"
+          />
+        </Field>
         <FieldGroup columns={1}>{notesField}</FieldGroup>
         <EvidenceUploadZone state={state} dealId={selectedItem.id} />
         <CTA
-          label="Generate & Send Allotment Letter"
-          icon={FileText}
-          onClick={forms.handleGenerateAllotment}
+          label="Submit DoTM Registration →"
+          icon={Stamp}
+          onClick={forms.handleRegisterDoTM}
           isLoading={isActionLoading}
           missingLabels={stepMissingLabels}
         />

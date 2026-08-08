@@ -290,9 +290,13 @@ export function useActionForms({
     } catch (e: any) { err('Error: ' + e.message); }
   };
 
-  // 11. INSURANCE_ACTIVATION → BANK_ALLOTMENT
+  // 11. INSURANCE_ACTIVATION → BANK_ALLOTMENT (financed pre-delivery path only)
   const handleGenerateAllotment = async () => {
     try {
+      await updateSaleMutation.mutateAsync({
+        id: selectedItem.id,
+        patch: { currentState: 'BANK_ALLOTMENT' }
+      });
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'SALE',
         fromState: 'INSURANCE_ACTIVATION', toState: 'BANK_ALLOTMENT',
@@ -301,29 +305,32 @@ export function useActionForms({
       if (selectedItem.vehicleId) {
         await supabase.from('vehicles').update({ vehicle_state: 'BANK_ALLOTMENT' } as any).eq('id', selectedItem.vehicleId);
       }
-      refetchAll();
+      refetchAll(); setDrawerOpen(false);
     } catch (e: any) { err('Error: ' + e.message); }
   };
 
   // 12. INSURANCE_ACTIVATION / BANK_ALLOTMENT → DOTM_REGISTRATION
   const handleRegisterDoTM = async () => {
-    if (!registrationNo) { err('Please provide the registration plate number.'); return; }
     try {
-      await updateSaleMutation.mutateAsync({
-        id: selectedItem.id,
-        patch: {
-          registrationNo, registeredAt: new Date().toISOString(),
-          registeredUnder: selectedItem.paymentType === 'FINANCED' ? selectedItem.bankName : 'CUSTOMER',
-          currentState: 'DOTM_REGISTRATION'
-        }
-      });
+      const patch: Record<string, any> = {
+        registeredAt: new Date().toISOString(),
+        registeredUnder: selectedItem.paymentType === 'FINANCED' ? selectedItem.bankName : 'CUSTOMER',
+        currentState: 'DOTM_REGISTRATION'
+      };
+      if (registrationNo) patch.registrationNo = registrationNo;
+
+      await updateSaleMutation.mutateAsync({ id: selectedItem.id, patch });
       await transitionMutation.mutateAsync({
         entityId: selectedItem.id, entityType: 'SALE',
         fromState: selectedItem.state, toState: 'DOTM_REGISTRATION',
-        notes: actionNotes || `DoTM registration completed. Plate: ${registrationNo}`
+        notes: actionNotes || (registrationNo
+          ? `DoTM registration submitted. Plate: ${registrationNo}`
+          : 'DoTM registration submitted. Plate number to be updated once issued.')
       });
       if (selectedItem.vehicleId) {
-        await supabase.from('vehicles').update({ vehicle_state: 'DOTM_REGISTRATION', registration_no: registrationNo } as any).eq('id', selectedItem.vehicleId);
+        const vPatch: any = { vehicle_state: 'DOTM_REGISTRATION' };
+        if (registrationNo) vPatch.registration_no = registrationNo;
+        await supabase.from('vehicles').update(vPatch).eq('id', selectedItem.vehicleId);
       }
       refetchAll(); setDrawerOpen(false);
     } catch (e: any) { err('Error: ' + e.message); }
